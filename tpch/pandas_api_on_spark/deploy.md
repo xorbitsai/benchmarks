@@ -2,7 +2,7 @@
 
 ```shell
 docker run --privileged \
-           --env SPARK_MASTER_HOST="$master_host" \
+           --env SPARK_MASTER_HOST="${MASTER_HOSTNAME}" \
            -d \
            --network host \
            --name spark-master xprobe/spark:spark-master-3.3.1-3 tail -f /dev/null
@@ -17,5 +17,5 @@ docker run --privileged \
            -d --network host \
            --name spark-worker xprobe/spark:spark-worker-3.3.1-3 tail -f /dev/null
            
-docker exec -d spark-worker bin/spark-class org.apache.spark.deploy.worker.Worker "spark://$master_host:7077"
+docker exec -d spark-worker bin/spark-class org.apache.spark.deploy.worker.Worker "spark://${MASTER_HOSTNAME}:7077"
 ```
