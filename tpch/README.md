@@ -13,9 +13,9 @@ TPC-H SF 1000 consists of an r6i.large instance as the supervisor, and 16 r6i.8x
 - Spark: 3.3.1
 
 ## SF1000: Xorbits
-Although Xorbits is able to run all the queries in a row, Dask, Pandas API on Spark, and Modin 
-hanged at the first query. Thus, we are not able to compare the performance difference now, and we
-plan to try again later.
+Although Xorbits is able to pass all the queries in a row, Dask, Pandas API on Spark and Modin 
+failed on most of the queries. Thus, we are not able to compare the performance difference now, and
+we plan to try again later.
 
 ![image info](https://xorbits.io/res/xorbits_1t.png)
 
@@ -78,7 +78,7 @@ Dask.
 | Q22   |   32.37  |  17.76  |      1.82      |
 | Total | 3,136.36 |  426.74 |      7.35      |
 
-## SF100:  Xorbits vs Pandas API on Spark
+## SF100:  Xorbits vs. Pandas API on Spark
 Spark is a well-known framework for fast, large-scale data processing. The graph below illustrates
 the computing times of Xorbits and Spark Pandas API for the TPC-H queries (excluding I/O). Across
 all queries, the two systems have roughly similar performance, but Xorbits provided much better API
@@ -107,7 +107,7 @@ compatibility. Spark Pandas API failed on Q1, Q4, Q7, Q21, and ran out of memory
 | Q22   |       23.98      |  17.76  |      1.35      |
 | Total |      457.03      |  426.44 |      1.07      |
 
-## SF100:  Xorbits vs Modin
+## SF100:  Xorbits vs. Modin
 Modin is another "Pandas-like" framework that claims to scale Pandas by "changing a single line of
 code." The graph below illustrates the computing times of Xorbits and Modin for the TPC-H queries
 (excluding I/O). Since Modin hanged at the first query, we tried running queries individually to 
