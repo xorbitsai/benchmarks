@@ -885,26 +885,25 @@ def main():
     parser.add_argument(
         "--folder",
         type=str,
-        help="The folder containing TPCH data",
+        help="The s3 path containing TPCH data",
     )
     parser.add_argument(
         "--query",
         type=str,
         help=(
             "Queries selected to run, separated by commas. If not provided, "
-            "all tests will be executed"
+            "all tests will be executed. For example, --query q01,q02"
         ),
     )
-    parser.add_argument("--master", type=str, help=("Spark master ip address."))
+    parser.add_argument("--master", type=str, help="Spark master ip address")
 
-    parser.add_argument("--account", type=str)
+    # aws settings
+    parser.add_argument("--account", type=str, help="AWS access id")
+    parser.add_argument("--key", type=str, help="AWS secret access key")
+    parser.add_argument("--endpoint", type=str, help="AWS region endpoint related to your S3")
 
-    parser.add_argument("--container", type=str)
-
-    parser.add_argument("--key", type=str)
-    parser.add_argument("--endpoint", type=str)
-    parser.add_argument("--executor_cores", type=str)
-    parser.add_argument("--executor_memory", type=str)
+    parser.add_argument("--executor_cores", type=str, help='Number of cores for each Spark executor')
+    parser.add_argument("--executor_memory", type=str, help='Memory size for each Spark executor')
 
     args = parser.parse_args()
     data_folder: str = args.folder
