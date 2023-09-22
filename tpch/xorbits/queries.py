@@ -1,13 +1,12 @@
 import argparse
 import json
 import time
-from datetime import datetime
 from typing import Dict
 
 import pandas
 
-import dask.dataframe as pd
-from dask.distributed import Client, wait
+import xorbits
+import xorbits.pandas as pd
 
 
 def load_lineitem(root: str, storage_options: Dict, dataset: Dict):
@@ -114,10 +113,11 @@ def q01(dataset: Dict):
     lineitem = dataset["lineitem"]
 
     t1 = time.time()
-    date = datetime.strptime("1998-09-02", "%Y-%m-%d")
+    date = pd.Timestamp("1998-09-02")
     lineitem_filtered = lineitem.loc[
         :,
         [
+            "L_ORDERKEY",
             "L_QUANTITY",
             "L_EXTENDEDPRICE",
             "L_DISCOUNT",
@@ -125,11 +125,10 @@ def q01(dataset: Dict):
             "L_RETURNFLAG",
             "L_LINESTATUS",
             "L_SHIPDATE",
-            "L_ORDERKEY",
         ],
     ]
     sel = lineitem_filtered.L_SHIPDATE <= date
-    lineitem_filtered = lineitem_filtered[sel].copy()
+    lineitem_filtered = lineitem_filtered[sel]
     lineitem_filtered["AVG_QTY"] = lineitem_filtered.L_QUANTITY
     lineitem_filtered["AVG_PRICE"] = lineitem_filtered.L_EXTENDEDPRICE
     lineitem_filtered["DISC_PRICE"] = lineitem_filtered.L_EXTENDEDPRICE * (
@@ -140,8 +139,19 @@ def q01(dataset: Dict):
         * (1 - lineitem_filtered.L_DISCOUNT)
         * (1 + lineitem_filtered.L_TAX)
     )
-    gb = lineitem_filtered.groupby(["L_RETURNFLAG", "L_LINESTATUS"])
-
+    # ray needs double square bracket
+    gb = lineitem_filtered.groupby(["L_RETURNFLAG", "L_LINESTATUS"], as_index=False)[
+        [
+            "L_ORDERKEY",
+            "L_QUANTITY",
+            "L_EXTENDEDPRICE",
+            "L_DISCOUNT",
+            "AVG_QTY",
+            "AVG_PRICE",
+            "CHARGE",
+            "DISC_PRICE",
+        ]
+    ]
     total = gb.agg(
         {
             "L_QUANTITY": "sum",
@@ -154,8 +164,7 @@ def q01(dataset: Dict):
             "L_ORDERKEY": "count",
         }
     )
-
-    total = total.compute().reset_index().sort_values(["L_RETURNFLAG", "L_LINESTATUS"])
+    total = total.sort_values(["L_RETURNFLAG", "L_LINESTATUS"])
     print(total)
     print("Q01 Execution time (s): ", time.time() - t1)
 
@@ -242,9 +251,7 @@ def q02(dataset: Dict):
             "P_MFGR",
         ],
     ]
-
-    min_values = merged_df.groupby("P_PARTKEY")["PS_SUPPLYCOST"].min().reset_index()
-
+    min_values = merged_df.groupby("P_PARTKEY", as_index=False)["PS_SUPPLYCOST"].min()
     min_values.columns = ["P_PARTKEY_CPY", "MIN_SUPPLYCOST"]
     merged_df = merged_df.merge(
         min_values,
@@ -265,8 +272,7 @@ def q02(dataset: Dict):
             "S_COMMENT",
         ],
     ]
-
-    total = total.compute().sort_values(
+    total = total.sort_values(
         by=[
             "S_ACCTBAL",
             "N_NAME",
@@ -280,7 +286,6 @@ def q02(dataset: Dict):
             True,
         ],
     )
-
     print(total)
     print("Q02 Execution time (s): ", time.time() - t1)
 
@@ -291,7 +296,7 @@ def q03(dataset: Dict):
     customer = dataset["customer"]
 
     t1 = time.time()
-    date = datetime.strptime("1995-03-04", "%Y-%m-%d")
+    date = pd.Timestamp("1995-03-04")
     lineitem_filtered = lineitem.loc[
         :, ["L_ORDERKEY", "L_EXTENDEDPRICE", "L_DISCOUNT", "L_SHIPDATE"]
     ]
@@ -309,13 +314,12 @@ def q03(dataset: Dict):
     jn2 = jn1.merge(flineitem, left_on="O_ORDERKEY", right_on="L_ORDERKEY")
     jn2["TMP"] = jn2.L_EXTENDEDPRICE * (1 - jn2.L_DISCOUNT)
     total = (
-        jn2.groupby(["L_ORDERKEY", "O_ORDERDATE", "O_SHIPPRIORITY"])["TMP"]
+        jn2.groupby(["L_ORDERKEY", "O_ORDERDATE", "O_SHIPPRIORITY"], as_index=False)[
+            "TMP"
+        ]
         .sum()
-        .compute()
-        .reset_index()
         .sort_values(["TMP"], ascending=False)
     )
-
     res = total.loc[:, ["L_ORDERKEY", "TMP", "O_ORDERDATE", "O_SHIPPRIORITY"]]
     print(res.head(10))
     print("Q03 Execution time (s): ", time.time() - t1)
@@ -326,23 +330,19 @@ def q04(dataset: Dict):
     orders = dataset["orders"]
 
     t1 = time.time()
-    date1 = datetime.strptime("1993-11-01", "%Y-%m-%d")
-    date2 = datetime.strptime("1993-08-01", "%Y-%m-%d")
+    date1 = pd.Timestamp("1993-11-01")
+    date2 = pd.Timestamp("1993-08-01")
     lsel = lineitem.L_COMMITDATE < lineitem.L_RECEIPTDATE
     osel = (orders.O_ORDERDATE < date1) & (orders.O_ORDERDATE >= date2)
     flineitem = lineitem[lsel]
     forders = orders[osel]
-    forders = forders[["O_ORDERKEY", "O_ORDERPRIORITY"]]
-    jn = forders.merge(
-        flineitem, left_on="O_ORDERKEY", right_on="L_ORDERKEY"
-    ).drop_duplicates(subset=["O_ORDERKEY"])[["O_ORDERPRIORITY", "O_ORDERKEY"]]
+    jn = forders[forders["O_ORDERKEY"].isin(flineitem["L_ORDERKEY"])]
     total = (
-        jn.groupby("O_ORDERPRIORITY")["O_ORDERKEY"]
+        jn.groupby("O_ORDERPRIORITY", as_index=False)["O_ORDERKEY"]
         .count()
-        .reset_index()
         .sort_values(["O_ORDERPRIORITY"])
     )
-    print(total.compute())
+    print(total)
     print("Q04 Execution time (s): ", time.time() - t1)
 
 
@@ -355,26 +355,22 @@ def q05(dataset: Dict):
     region = dataset["region"]
 
     t1 = time.time()
-    date1 = datetime.strptime("1996-01-01", "%Y-%m-%d")
-    date2 = datetime.strptime("1997-01-01", "%Y-%m-%d")
-
+    date1 = pd.Timestamp("1996-01-01")
+    date2 = pd.Timestamp("1997-01-01")
     rsel = region.R_NAME == "ASIA"
     osel = (orders.O_ORDERDATE >= date1) & (orders.O_ORDERDATE < date2)
-
     forders = orders[osel]
     fregion = region[rsel]
     jn1 = fregion.merge(nation, left_on="R_REGIONKEY", right_on="N_REGIONKEY")
     jn2 = jn1.merge(customer, left_on="N_NATIONKEY", right_on="C_NATIONKEY")
     jn3 = jn2.merge(forders, left_on="C_CUSTKEY", right_on="O_CUSTKEY")
     jn4 = jn3.merge(lineitem, left_on="O_ORDERKEY", right_on="L_ORDERKEY")
-
     jn5 = supplier.merge(
         jn4, left_on=["S_SUPPKEY", "S_NATIONKEY"], right_on=["L_SUPPKEY", "N_NATIONKEY"]
     )
     jn5["TMP"] = jn5.L_EXTENDEDPRICE * (1.0 - jn5.L_DISCOUNT)
-    gb = jn5.groupby("N_NAME")["TMP"].sum()
-
-    total = gb.compute().reset_index().sort_values("TMP", ascending=False)
+    gb = jn5.groupby("N_NAME", as_index=False)["TMP"].sum()
+    total = gb.sort_values("TMP", ascending=False)
     print(total)
     print("Q05 Execution time (s): ", time.time() - t1)
 
@@ -383,9 +379,8 @@ def q06(dataset: Dict):
     lineitem = dataset["lineitem"]
 
     t1 = time.time()
-    date1 = datetime.strptime("1996-01-01", "%Y-%m-%d")
-    date2 = datetime.strptime("1997-01-01", "%Y-%m-%d")
-
+    date1 = pd.Timestamp("1996-01-01")
+    date2 = pd.Timestamp("1997-01-01")
     lineitem_filtered = lineitem.loc[
         :, ["L_QUANTITY", "L_EXTENDEDPRICE", "L_DISCOUNT", "L_SHIPDATE"]
     ]
@@ -398,7 +393,7 @@ def q06(dataset: Dict):
     )
     flineitem = lineitem_filtered[sel]
     total = (flineitem.L_EXTENDEDPRICE * flineitem.L_DISCOUNT).sum()
-    print(total.compute())
+    print(total)
     print("Q06 Execution time (s): ", time.time() - t1)
 
 
@@ -411,10 +406,9 @@ def q07(dataset: Dict):
 
     """This version is faster than q07_old. Keeping the old one for reference"""
     t1 = time.time()
-
     lineitem_filtered = lineitem[
-        (lineitem["L_SHIPDATE"] >= datetime.strptime("1995-01-01", "%Y-%m-%d"))
-        & (lineitem["L_SHIPDATE"] < datetime.strptime("1997-01-01", "%Y-%m-%d"))
+        (lineitem["L_SHIPDATE"] >= pd.Timestamp("1995-01-01"))
+        & (lineitem["L_SHIPDATE"] < pd.Timestamp("1997-01-01"))
     ]
     lineitem_filtered["L_YEAR"] = lineitem_filtered["L_SHIPDATE"].apply(
         lambda x: x.year
@@ -443,6 +437,7 @@ def q07(dataset: Dict):
     )
     N1_C_O = N1_C_O.drop(columns=["C_CUSTKEY", "O_CUSTKEY"])
 
+    # NOTE: this is faster than first merging lineitem with N1_C_O
     N2_S = supplier_filtered.merge(
         n2, left_on="S_NATIONKEY", right_on="N_NATIONKEY", how="inner"
     )
@@ -489,20 +484,17 @@ def q07(dataset: Dict):
 
     # concat results
     total = pd.concat([total1, total2])
-    total = total.groupby(["SUPP_NATION", "CUST_NATION", "L_YEAR"]).VOLUME.agg("sum")
-    total.columns = ["SUPP_NATION", "CUST_NATION", "L_YEAR", "REVENUE"]
 
-    total = (
-        total.compute()
-        .reset_index()
-        .sort_values(
-            by=["SUPP_NATION", "CUST_NATION", "L_YEAR"],
-            ascending=[
-                True,
-                True,
-                True,
-            ],
-        )
+    total = total.groupby(["SUPP_NATION", "CUST_NATION", "L_YEAR"], as_index=False).agg(
+        REVENUE=pd.NamedAgg(column="VOLUME", aggfunc="sum")
+    )
+    total = total.sort_values(
+        by=["SUPP_NATION", "CUST_NATION", "L_YEAR"],
+        ascending=[
+            True,
+            True,
+            True,
+        ],
     )
     print(total)
     print("Q07 Execution time (s): ", time.time() - t1)
@@ -534,8 +526,8 @@ def q08(dataset: Dict):
     )
     total = total.loc[:, ["L_ORDERKEY", "VOLUME", "S_NATIONKEY"]]
     orders_filtered = orders[
-        (orders["O_ORDERDATE"] >= datetime.strptime("1995-01-01", "%Y-%m-%d"))
-        & (orders["O_ORDERDATE"] < datetime.strptime("1997-01-01", "%Y-%m-%d"))
+        (orders["O_ORDERDATE"] >= pd.Timestamp("1995-01-01"))
+        & (orders["O_ORDERDATE"] < pd.Timestamp("1997-01-01"))
     ]
     orders_filtered["O_YEAR"] = orders_filtered["O_ORDERDATE"].apply(lambda x: x.year)
     orders_filtered = orders_filtered.loc[:, ["O_ORDERKEY", "O_CUSTKEY", "O_YEAR"]]
@@ -573,20 +565,17 @@ def q08(dataset: Dict):
         numerator = df["VOLUME"].sum()
         return numerator / demonimator
 
-    total = total.groupby("O_YEAR").apply(udf)
-    total = (
-        total.compute()
-        .reset_index()
-        .sort_values(
-            by=[
-                "O_YEAR",
-            ],
-            ascending=[
-                True,
-            ],
-        )
-    )
+    # modin returns empty column with as_index=false
+    total = total.groupby("O_YEAR").apply(udf).reset_index()
     total.columns = ["O_YEAR", "MKT_SHARE"]
+    total = total.sort_values(
+        by=[
+            "O_YEAR",
+        ],
+        ascending=[
+            True,
+        ],
+    )
     print(total)
     print("Q08 Execution time (s): ", time.time() - t1)
 
@@ -613,12 +602,8 @@ def q09(dataset: Dict):
         (1 * jn5.PS_SUPPLYCOST) * jn5.L_QUANTITY
     )
     jn5["O_YEAR"] = jn5.O_ORDERDATE.apply(lambda x: x.year)
-    gb = jn5.groupby(["N_NAME", "O_YEAR"])["TMP"].sum()
-    total = (
-        gb.compute()
-        .reset_index()
-        .sort_values(["N_NAME", "O_YEAR"], ascending=[True, False])
-    )
+    gb = jn5.groupby(["N_NAME", "O_YEAR"], as_index=False)["TMP"].sum()
+    total = gb.sort_values(["N_NAME", "O_YEAR"], ascending=[True, False])
     print(total)
     print("Q09 Execution time (s): ", time.time() - t1)
 
@@ -630,8 +615,8 @@ def q10(dataset: Dict):
     customer = dataset["customer"]
 
     t1 = time.time()
-    date1 = datetime.strptime("1994-11-01", "%Y-%m-%d")
-    date2 = datetime.strptime("1995-02-01", "%Y-%m-%d")
+    date1 = pd.Timestamp("1994-11-01")
+    date2 = pd.Timestamp("1995-02-01")
     osel = (orders.O_ORDERDATE >= date1) & (orders.O_ORDERDATE < date2)
     lsel = lineitem.L_RETURNFLAG == "R"
     forders = orders[osel]
@@ -650,10 +635,10 @@ def q10(dataset: Dict):
             "C_ADDRESS",
             "C_COMMENT",
         ],
+        as_index=False,
     )["TMP"].sum()
-    total = gb.compute().reset_index().sort_values("TMP", ascending=False)
+    total = gb.sort_values("TMP", ascending=False)
     print(total.head(20))
-    print(total.shape)
     print("Q10 Execution time (s): ", time.time() - t1)
 
 
@@ -679,11 +664,11 @@ def q11(dataset: Dict):
     )
     ps_supp_n_merge = ps_supp_n_merge.loc[:, ["PS_PARTKEY", "TOTAL_COST"]]
     sum_val = ps_supp_n_merge["TOTAL_COST"].sum() * 0.0001
-
-    total = ps_supp_n_merge.groupby(["PS_PARTKEY"]).TOTAL_COST.agg("sum").reset_index()
-    total = total.rename(columns={"TOTAL_COST": "VALUE"})
+    total = ps_supp_n_merge.groupby(["PS_PARTKEY"], as_index=False).agg(
+        VALUE=pd.NamedAgg(column="TOTAL_COST", aggfunc="sum")
+    )
     total = total[total["VALUE"] > sum_val]
-    total = total.compute().sort_values("VALUE", ascending=False)
+    total = total.sort_values("VALUE", ascending=False)
     print(total)
     print("Q11 Execution time (s): ", time.time() - t1)
 
@@ -693,8 +678,8 @@ def q12(dataset: Dict):
     orders = dataset["orders"]
 
     t1 = time.time()
-    date1 = datetime.strptime("1994-01-01", "%Y-%m-%d")
-    date2 = datetime.strptime("1995-01-01", "%Y-%m-%d")
+    date1 = pd.Timestamp("1994-01-01")
+    date2 = pd.Timestamp("1995-01-01")
     sel = (
         (lineitem.L_RECEIPTDATE < date2)
         & (lineitem.L_COMMITDATE < date2)
@@ -706,18 +691,15 @@ def q12(dataset: Dict):
     )
     flineitem = lineitem[sel]
     jn = flineitem.merge(orders, left_on="L_ORDERKEY", right_on="O_ORDERKEY")
-    gb = jn.groupby("L_SHIPMODE")["O_ORDERPRIORITY"]
 
     def g1(x):
-        return x.apply(lambda s: ((s == "1-URGENT") | (s == "2-HIGH")).sum())
+        return ((x == "1-URGENT") | (x == "2-HIGH")).sum()
 
     def g2(x):
-        return x.apply(lambda s: ((s != "1-URGENT") & (s != "2-HIGH")).sum())
+        return ((x != "1-URGENT") & (x != "2-HIGH")).sum()
 
-    g1_agg = pd.Aggregation("g1", g1, lambda s0: s0.sum())
-    g2_agg = pd.Aggregation("g2", g2, lambda s0: s0.sum())
-    total = gb.agg([g1_agg, g2_agg])
-    total = total.compute().reset_index().sort_values("L_SHIPMODE")
+    total = jn.groupby("L_SHIPMODE", as_index=False)["O_ORDERPRIORITY"].agg((g1, g2))
+    total = total.sort_values("L_SHIPMODE")
     print(total)
     print("Q12 Execution time (s): ", time.time() - t1)
 
@@ -729,20 +711,19 @@ def q13(dataset: Dict):
     t1 = time.time()
     customer_filtered = customer.loc[:, ["C_CUSTKEY"]]
     orders_filtered = orders[
-        ~orders["O_COMMENT"].str.contains("special(\\S|\\s)*requests")
+        ~orders["O_COMMENT"].str.contains("special(\S|\s)*requests")
     ]
     orders_filtered = orders_filtered.loc[:, ["O_ORDERKEY", "O_CUSTKEY"]]
     c_o_merged = customer_filtered.merge(
         orders_filtered, left_on="C_CUSTKEY", right_on="O_CUSTKEY", how="left"
     )
     c_o_merged = c_o_merged.loc[:, ["C_CUSTKEY", "O_ORDERKEY"]]
-
-    count_df = c_o_merged.groupby(["C_CUSTKEY"]).O_ORDERKEY.agg("count").reset_index()
-    count_df = count_df.rename(columns={"O_ORDERKEY": "C_COUNT"})
-
-    total = count_df.groupby(["C_COUNT"]).size().reset_index()
+    count_df = c_o_merged.groupby(["C_CUSTKEY"], as_index=False).agg(
+        C_COUNT=pd.NamedAgg(column="O_ORDERKEY", aggfunc="count")
+    )
+    total = count_df.groupby(["C_COUNT"], as_index=False).size()
     total.columns = ["C_COUNT", "CUSTDIST"]
-    total = total.compute().sort_values(
+    total = total.sort_values(
         by=["CUSTDIST", "C_COUNT"],
         ascending=[
             False,
@@ -758,8 +739,8 @@ def q14(dataset: Dict):
     part = dataset["part"]
 
     t1 = time.time()
-    startDate = datetime.strptime("1994-03-01", "%Y-%m-%d")
-    endDate = datetime.strptime("1994-04-01", "%Y-%m-%d")
+    startDate = pd.Timestamp("1994-03-01")
+    endDate = pd.Timestamp("1994-04-01")
     p_type_like = "PROMO"
     part_filtered = part.loc[:, ["P_PARTKEY", "P_TYPE"]]
     lineitem_filtered = lineitem.loc[
@@ -772,7 +753,7 @@ def q14(dataset: Dict):
     jn = flineitem.merge(part_filtered, left_on="L_PARTKEY", right_on="P_PARTKEY")
     jn["TMP"] = jn.L_EXTENDEDPRICE * (1.0 - jn.L_DISCOUNT)
     total = jn[jn.P_TYPE.str.startswith(p_type_like)].TMP.sum() * 100 / jn.TMP.sum()
-    print(total.compute())
+    print(total)
     print("Q14 Execution time (s): ", time.time() - t1)
 
 
@@ -782,18 +763,20 @@ def q15(dataset: Dict):
 
     t1 = time.time()
     lineitem_filtered = lineitem[
-        (lineitem["L_SHIPDATE"] >= datetime.strptime("1996-01-01", "%Y-%m-%d"))
-        & (lineitem["L_SHIPDATE"] < (datetime.strptime("1996-04-01", "%Y-%m-%d")))
-    ]  # + pd.DateOffset(months=3)))]
+        (lineitem["L_SHIPDATE"] >= pd.Timestamp("1996-01-01"))
+        & (
+            lineitem["L_SHIPDATE"]
+            < (pd.Timestamp("1996-01-01") + pd.DateOffset(months=3))
+        )
+    ]
     lineitem_filtered["REVENUE_PARTS"] = lineitem_filtered["L_EXTENDEDPRICE"] * (
         1.0 - lineitem_filtered["L_DISCOUNT"]
     )
     lineitem_filtered = lineitem_filtered.loc[:, ["L_SUPPKEY", "REVENUE_PARTS"]]
     revenue_table = (
-        lineitem_filtered.groupby("L_SUPPKEY")["REVENUE_PARTS"].agg("sum").reset_index()
-    )
-    revenue_table = revenue_table.rename(
-        columns={"REVENUE_PARTS": "TOTAL_REVENUE", "L_SUPPKEY": "SUPPLIER_NO"}
+        lineitem_filtered.groupby("L_SUPPKEY", as_index=False)
+        .agg(TOTAL_REVENUE=pd.NamedAgg(column="REVENUE_PARTS", aggfunc="sum"))
+        .rename(columns={"L_SUPPKEY": "SUPPLIER_NO"}, copy=False)
     )
     max_revenue = revenue_table["TOTAL_REVENUE"].max()
     revenue_table = revenue_table[revenue_table["TOTAL_REVENUE"] == max_revenue]
@@ -804,7 +787,7 @@ def q15(dataset: Dict):
     total = total.loc[
         :, ["S_SUPPKEY", "S_NAME", "S_ADDRESS", "S_PHONE", "TOTAL_REVENUE"]
     ]
-    print(total.compute())
+    print(total)
     print("Q15 Execution time (s): ", time.time() - t1)
 
 
@@ -826,7 +809,7 @@ def q16(dataset: Dict):
     )
     total = total.loc[:, ["P_BRAND", "P_TYPE", "P_SIZE", "PS_SUPPKEY"]]
     supplier_filtered = supplier[
-        supplier["S_COMMENT"].str.contains("Customer(\\S|\\s)*Complaints")
+        supplier["S_COMMENT"].str.contains("Customer(\S|\s)*Complaints")
     ]
     supplier_filtered = supplier_filtered.loc[:, ["S_SUPPKEY"]].drop_duplicates()
     # left merge to select only ps_suppkey values not in supplier_filtered
@@ -835,13 +818,11 @@ def q16(dataset: Dict):
     )
     total = total[total["S_SUPPKEY"].isna()]
     total = total.loc[:, ["P_BRAND", "P_TYPE", "P_SIZE", "PS_SUPPKEY"]]
-    total = (
-        total.groupby(["P_BRAND", "P_TYPE", "P_SIZE"])["PS_SUPPKEY"]
-        .nunique()
-        .reset_index()
-    )
+    total = total.groupby(["P_BRAND", "P_TYPE", "P_SIZE"], as_index=False)[
+        "PS_SUPPKEY"
+    ].nunique()
     total.columns = ["P_BRAND", "P_TYPE", "P_SIZE", "SUPPLIER_CNT"]
-    total = total.compute().sort_values(
+    total = total.sort_values(
         by=["SUPPLIER_CNT", "P_BRAND", "P_TYPE", "P_SIZE"],
         ascending=[False, True, True, True],
     )
@@ -864,11 +845,8 @@ def q17(dataset: Dict):
         :, ["L_QUANTITY", "L_EXTENDEDPRICE", "P_PARTKEY"]
     ]
     lineitem_filtered = lineitem.loc[:, ["L_PARTKEY", "L_QUANTITY"]]
-    lineitem_avg = (
-        lineitem_filtered.groupby(["L_PARTKEY"])
-        .L_QUANTITY.agg("mean")
-        .reset_index()
-        .rename(columns={"L_QUANTITY": "avg"})
+    lineitem_avg = lineitem_filtered.groupby(["L_PARTKEY"], as_index=False).agg(
+        avg=pd.NamedAgg(column="L_QUANTITY", aggfunc="mean")
     )
     lineitem_avg["avg"] = 0.2 * lineitem_avg["avg"]
     lineitem_avg = lineitem_avg.loc[:, ["L_PARTKEY", "avg"]]
@@ -876,9 +854,7 @@ def q17(dataset: Dict):
         lineitem_avg, left_on="P_PARTKEY", right_on="L_PARTKEY", how="inner"
     )
     total = total[total["L_QUANTITY"] < total["avg"]]
-    total = pandas.DataFrame(
-        {"avg_yearly": [(total["L_EXTENDEDPRICE"].sum() / 7.0).compute()]}
-    )
+    total = pd.DataFrame({"avg_yearly": [total["L_EXTENDEDPRICE"].sum() / 7.0]})
     print(total)
     print("Q17 Execution time (s): ", time.time() - t1)
 
@@ -889,18 +865,15 @@ def q18(dataset: Dict):
     customer = dataset["customer"]
 
     t1 = time.time()
-    gb1 = lineitem.groupby("L_ORDERKEY")["L_QUANTITY"].sum().reset_index()
+    gb1 = lineitem.groupby("L_ORDERKEY", as_index=False)["L_QUANTITY"].sum()
     fgb1 = gb1[gb1.L_QUANTITY > 300]
     jn1 = fgb1.merge(orders, left_on="L_ORDERKEY", right_on="O_ORDERKEY")
     jn2 = jn1.merge(customer, left_on="O_CUSTKEY", right_on="C_CUSTKEY")
     gb2 = jn2.groupby(
         ["C_NAME", "C_CUSTKEY", "O_ORDERKEY", "O_ORDERDATE", "O_TOTALPRICE"],
+        as_index=False,
     )["L_QUANTITY"].sum()
-    total = (
-        gb2.compute()
-        .reset_index()
-        .sort_values(["O_TOTALPRICE", "O_ORDERDATE"], ascending=[False, True])
-    )
+    total = gb2.sort_values(["O_TOTALPRICE", "O_ORDERDATE"], ascending=[False, True])
     print(total.head(100))
     print("Q18 Execution time (s): ", time.time() - t1)
 
@@ -972,46 +945,40 @@ def q19(dataset: Dict):
     fpart = part[psel]
     jn = flineitem.merge(fpart, left_on="L_PARTKEY", right_on="P_PARTKEY")
     jnsel = (
-        (
-            (jn.P_BRAND == Brand31)
-            & (
-                (jn.P_CONTAINER == SMBOX)
-                | (jn.P_CONTAINER == SMCASE)
-                | (jn.P_CONTAINER == SMPACK)
-                | (jn.P_CONTAINER == SMPKG)
-            )
-            & (jn.L_QUANTITY >= 4)
-            & (jn.L_QUANTITY <= 14)
-            & (jn.P_SIZE <= 5)
+        (jn.P_BRAND == Brand31)
+        & (
+            (jn.P_CONTAINER == SMBOX)
+            | (jn.P_CONTAINER == SMCASE)
+            | (jn.P_CONTAINER == SMPACK)
+            | (jn.P_CONTAINER == SMPKG)
         )
-        | (
-            (jn.P_BRAND == Brand43)
-            & (
-                (jn.P_CONTAINER == MEDBAG)
-                | (jn.P_CONTAINER == MEDBOX)
-                | (jn.P_CONTAINER == MEDPACK)
-                | (jn.P_CONTAINER == MEDPKG)
-            )
-            & (jn.L_QUANTITY >= 15)
-            & (jn.L_QUANTITY <= 25)
-            & (jn.P_SIZE <= 10)
+        & (jn.L_QUANTITY >= 4)
+        & (jn.L_QUANTITY <= 14)
+        & (jn.P_SIZE <= 5)
+        | (jn.P_BRAND == Brand43)
+        & (
+            (jn.P_CONTAINER == MEDBAG)
+            | (jn.P_CONTAINER == MEDBOX)
+            | (jn.P_CONTAINER == MEDPACK)
+            | (jn.P_CONTAINER == MEDPKG)
         )
-        | (
-            (jn.P_BRAND == Brand43)
-            & (
-                (jn.P_CONTAINER == LGBOX)
-                | (jn.P_CONTAINER == LGCASE)
-                | (jn.P_CONTAINER == LGPACK)
-                | (jn.P_CONTAINER == LGPKG)
-            )
-            & (jn.L_QUANTITY >= 26)
-            & (jn.L_QUANTITY <= 36)
-            & (jn.P_SIZE <= 15)
+        & (jn.L_QUANTITY >= 15)
+        & (jn.L_QUANTITY <= 25)
+        & (jn.P_SIZE <= 10)
+        | (jn.P_BRAND == Brand43)
+        & (
+            (jn.P_CONTAINER == LGBOX)
+            | (jn.P_CONTAINER == LGCASE)
+            | (jn.P_CONTAINER == LGPACK)
+            | (jn.P_CONTAINER == LGPKG)
         )
+        & (jn.L_QUANTITY >= 26)
+        & (jn.L_QUANTITY <= 36)
+        & (jn.P_SIZE <= 15)
     )
     jn = jn[jnsel]
     total = (jn.L_EXTENDEDPRICE * (1.0 - jn.L_DISCOUNT)).sum()
-    print(total.compute())
+    print(total)
     print("Q19 Execution time (s): ", time.time() - t1)
 
 
@@ -1023,8 +990,8 @@ def q20(dataset: Dict):
     supplier = dataset["supplier"]
 
     t1 = time.time()
-    date1 = datetime.strptime("1996-01-01", "%Y-%m-%d")
-    date2 = datetime.strptime("1997-01-01", "%Y-%m-%d")
+    date1 = pd.Timestamp("1996-01-01")
+    date2 = pd.Timestamp("1997-01-01")
     psel = part.P_NAME.str.startswith("azure")
     nsel = nation.N_NAME == "JORDAN"
     lsel = (lineitem.L_SHIPDATE >= date1) & (lineitem.L_SHIPDATE < date2)
@@ -1037,17 +1004,15 @@ def q20(dataset: Dict):
         left_on=["PS_PARTKEY", "PS_SUPPKEY"],
         right_on=["L_PARTKEY", "L_SUPPKEY"],
     )
-    gb = (
-        jn2.groupby(["PS_PARTKEY", "PS_SUPPKEY", "PS_AVAILQTY"])["L_QUANTITY"]
-        .sum()
-        .reset_index()
-    )
+    gb = jn2.groupby(["PS_PARTKEY", "PS_SUPPKEY", "PS_AVAILQTY"], as_index=False)[
+        "L_QUANTITY"
+    ].sum()
     gbsel = gb.PS_AVAILQTY > (0.5 * gb.L_QUANTITY)
     fgb = gb[gbsel]
     jn3 = fgb.merge(supplier, left_on="PS_SUPPKEY", right_on="S_SUPPKEY")
     jn4 = fnation.merge(jn3, left_on="N_NATIONKEY", right_on="S_NATIONKEY")
     jn4 = jn4.loc[:, ["S_NAME", "S_ADDRESS"]]
-    total = jn4.compute().sort_values("S_NAME").drop_duplicates()
+    total = jn4.sort_values("S_NAME").drop_duplicates()
     print(total)
     print("Q20 Execution time (s): ", time.time() - t1)
 
@@ -1066,9 +1031,8 @@ def q21(dataset: Dict):
     # Exists
     lineitem_orderkeys = (
         lineitem_filtered.loc[:, ["L_ORDERKEY", "L_SUPPKEY"]]
-        .groupby("L_ORDERKEY")["L_SUPPKEY"]
+        .groupby("L_ORDERKEY", as_index=False)["L_SUPPKEY"]
         .nunique()
-        .reset_index()
     )
     lineitem_orderkeys.columns = ["L_ORDERKEY", "nunique_col"]
     lineitem_orderkeys = lineitem_orderkeys[lineitem_orderkeys["nunique_col"] > 1]
@@ -1086,9 +1050,9 @@ def q21(dataset: Dict):
     )
 
     # Not Exists: Check the exists condition isn't still satisfied on the output.
-    lineitem_orderkeys = (
-        lineitem_filtered.groupby("L_ORDERKEY")["L_SUPPKEY"].nunique().reset_index()
-    )
+    lineitem_orderkeys = lineitem_filtered.groupby("L_ORDERKEY", as_index=False)[
+        "L_SUPPKEY"
+    ].nunique()
     lineitem_orderkeys.columns = ["L_ORDERKEY", "nunique_col"]
     lineitem_orderkeys = lineitem_orderkeys[lineitem_orderkeys["nunique_col"] == 1]
     lineitem_orderkeys = lineitem_orderkeys.loc[:, ["L_ORDERKEY"]]
@@ -1117,9 +1081,9 @@ def q21(dataset: Dict):
         nation_filtered, left_on="S_NATIONKEY", right_on="N_NATIONKEY", how="inner"
     )
     total = total.loc[:, ["S_NAME"]]
-    total = total.groupby("S_NAME").size().reset_index()
+    total = total.groupby("S_NAME", as_index=False).size()
     total.columns = ["S_NAME", "NUMWAIT"]
-    total = total.compute().sort_values(
+    total = total.sort_values(
         by=[
             "NUMWAIT",
             "S_NAME",
@@ -1148,8 +1112,7 @@ def q22(dataset: Dict):
     ]
     avg_value = customer_filtered["C_ACCTBAL"].mean()
     customer_filtered = customer_filtered[customer_filtered["C_ACCTBAL"] > avg_value]
-    # Select only the keys that don't match by performing a left join and only
-    # selecting columns with an N/A value
+    # Select only the keys that don't match by performing a left join and only selecting columns with an na value
     orders_filtered = orders.loc[:, ["O_CUSTKEY"]].drop_duplicates()
     customer_keys = customer_filtered.loc[:, ["C_CUSTKEY"]].drop_duplicates()
     customer_selected = customer_keys.merge(
@@ -1161,12 +1124,13 @@ def q22(dataset: Dict):
         customer_filtered, on="C_CUSTKEY", how="inner"
     )
     customer_selected = customer_selected.loc[:, ["CNTRYCODE", "C_ACCTBAL"]]
-    agg1 = customer_selected.groupby(["CNTRYCODE"]).size().reset_index()
+    agg1 = customer_selected.groupby(["CNTRYCODE"], as_index=False).size()
     agg1.columns = ["CNTRYCODE", "NUMCUST"]
-    agg2 = customer_selected.groupby(["CNTRYCODE"]).C_ACCTBAL.agg("sum").reset_index()
-    agg2 = agg2.rename(columns={"C_ACCTBAL": "TOTACCTBAL"})
+    agg2 = customer_selected.groupby(["CNTRYCODE"], as_index=False).agg(
+        TOTACCTBAL=pd.NamedAgg(column="C_ACCTBAL", aggfunc="sum")
+    )
     total = agg1.merge(agg2, on="CNTRYCODE", how="inner")
-    total = total.compute().sort_values(
+    total = total.sort_values(
         by=[
             "CNTRYCODE",
         ],
@@ -1251,7 +1215,7 @@ query_to_runner = {
 }
 
 
-def run_queries(path, storage_options, client, queries):
+def run_queries(path, storage_options, queries):
     dataset = {}
     total_start = time.time()
     print("Start data loading")
@@ -1262,25 +1226,13 @@ def run_queries(path, storage_options, client, queries):
     print(f"Data loading time (s): {time.time() - total_start}")
 
     total_start = time.time()
-    print("Start data persisting")
-    for table_name in dataset:
-        df = dataset[table_name]
-        start = time.time()
-        df = client.persist(df)
-        wait(df)
-        dataset[table_name] = df
-        print(f"{table_name} persisting time (s): {time.time() - start}")
-
-    print(f"Total data persisting time (s): {time.time() - total_start}")
-
-    total_start = time.time()
     for query in queries:
         query_to_runner[query](dataset)
     print(f"Total query execution time (s): {time.time() - total_start}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Dask TPC-H benchmark.")
+    parser = argparse.ArgumentParser(description="Xorbits TPC-H benchmark.")
     parser.add_argument(
         "--path", type=str, required=True, help="Path to the TPC-H dataset."
     )
@@ -1301,7 +1253,7 @@ def main():
         "--endpoint",
         type=str,
         required=False,
-        help="The endpoint of existing Dask cluster."
+        help="The endpoint of existing Xorbits cluster."
     )
     args = parser.parse_args()
 
@@ -1321,8 +1273,12 @@ def main():
         queries = args.queries
     print(f"Queries to run: {queries}")
 
-    client = Client("127.0.0.1:8786")
-    run_queries(path, storage_options, client, queries)
+    if args.endpoint:
+        xorbits.init(address=args.endpoint)
+    else:
+        xorbits.init()
+    run_queries(path, storage_options, queries)
+    xorbits.shutdown()
 
 
 if __name__ == "__main__":
