@@ -14,7 +14,6 @@ def matmul(size):
 
     C = np.matmul(A, B)
     C.execute()
-
     return C
 
 
@@ -82,9 +81,8 @@ def qr(size):
     a = np.random.random(size=(size, size))
     Q, R = np.linalg.qr(a=a)
 
-    Q.execute()
-    R.execute()
-
+    Q = Q.execute()
+    R = R.execute()
     return (Q, R)
 
 
@@ -96,16 +94,16 @@ def fft(size):
     return s
 
 
-def lregression(size):
-    from xorbits.sklearn.linear_model import LinearRegression
+# def lregression(size):
+#     from xorbits.sklearn.linear_model import LinearRegression
 
-    p = int(np.log(size) + 100)
-    X = np.random.random((size, p))
-    y = np.random.random(size)
+#     p = int(np.log(size) + 100)
+#     X = np.random.random((size, p))
+#     y = np.random.random(size)
 
-    lr = LinearRegression()
-    lr.fit(X, y)
-    return lr
+#     lr = LinearRegression()
+#     lr.fit(X, y)
+#     return lr
 
 
 workload_to_runner = {
@@ -114,8 +112,8 @@ workload_to_runner = {
         "sizes": {
             "s": 10_000,
             "m": 20_000,
-            "l": 40_000,
-            "xl": 80_000,
+            "l": 50_000,
+            "xl": 100_000,
         },
     },
     "blacksch": {
@@ -131,9 +129,9 @@ workload_to_runner = {
         "func": qr,
         "sizes": {
             "s": 1_000,
-            "m": 2_000,
-            "l": 4_000,
-            "xl": 8_000,
+            "m": 5_000,
+            "l": 8_000,
+            "xl": 10_000,
         },
     },
     "fft": {
@@ -143,15 +141,6 @@ workload_to_runner = {
             "m": 10_000,
             "l": 20_000,
             "xl": 40_000,
-        },
-    },
-    "lregression": {
-        "func": lregression,
-        "sizes": {
-            "s": 100_000,
-            "m": 1_000_000,
-            "l": 10_000_000,
-            "xl": 100_000_000,
         },
     },
 }
@@ -164,7 +153,7 @@ def run_workloads(workloads, sizes):
         for key, size in sizes_dict.items():
             if key in sizes:
                 start = time.time()
-                func(size)
+                result = func(size)
                 end = time.time()
                 duration = end - start
                 print(f"{workload},{size},{duration}")
@@ -195,6 +184,7 @@ def main():
         xorbits.init(address=args.endpoint)
     else:
         xorbits.init()
+
     run_workloads(args.workloads, args.size)
     xorbits.shutdown()
 

@@ -26,8 +26,8 @@ workload_to_runner = {
         "sizes": {
             "s": 10_000,
             "m": 20_000,
-            "l": 40_000,
-            "xl": 80_000,
+            "l": 50_000,
+            "xl": 100_000,
         },
     },
     "fft": {
@@ -49,7 +49,7 @@ def run_workloads(workloads, sizes):
         for key, size in sizes_dict.items():
             if key in sizes:
                 start = time("s")
-                func(size)
+                result = func(size)
                 end = time("s")
                 duration = end - start
                 print(f"{workload},{size},{duration}")

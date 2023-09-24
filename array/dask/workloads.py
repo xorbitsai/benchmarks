@@ -127,8 +127,8 @@ workload_to_runner = {
         "sizes": {
             "s": 10_000,
             "m": 20_000,
-            "l": 40_000,
-            "xl": 80_000,
+            "l": 50_000,
+            "xl": 100_000,
         },
     },
     "blacksch": {
@@ -177,7 +177,7 @@ def run_workloads(workloads, sizes, chunk, client):
         for key, size in sizes_dict.items():
             if key in sizes:
                 start = time.time()
-                func(size, chunk, client)
+                result = func(size, chunk, client)
                 end = time.time()
                 duration = end - start
                 print(f"{workload},{size},{duration}")
@@ -209,6 +209,7 @@ def main():
 
     if args.endpoint == "local" or args.endpoint is None:
         from dask.distributed import LocalCluster
+
         client = LocalCluster()
     elif args.endpoint:
         client = Client(args.endpoint)
