@@ -843,38 +843,38 @@ def run_queries(data_folder: str, select: List[str] = None):
 
     # Load the data
     t1 = time.time()
-    lineitem = load_data(data_folder, "lineitem")
-    part = load_data(data_folder, "part")
-    orders = load_data(data_folder, "orders")
-    customer = load_data(data_folder, "customer")
-    nation = load_data(data_folder, "nation")
-    region = load_data(data_folder, "region")
-    supplier = load_data(data_folder, "supplier")
-    partsupp = load_data(data_folder, "partsupp")
+    lineitem = load_data(data_folder, "lineitem.parquet")
+    # part = load_data(data_folder, "part")
+    # orders = load_data(data_folder, "orders")
+    # customer = load_data(data_folder, "customer")
+    # nation = load_data(data_folder, "nation")
+    # region = load_data(data_folder, "region")
+    # supplier = load_data(data_folder, "supplier")
+    # partsupp = load_data(data_folder, "partsupp")
     print("Reading time (s): ", time.time() - t1)
 
     q01(lineitem)
-    q02(part, partsupp, supplier, nation, region)
-    q03(lineitem, orders, customer)
-    q04(lineitem, orders)
-    q05(lineitem, orders, customer, nation, region, supplier)
-    q06(lineitem)
-    q07(lineitem, supplier, orders, customer, nation)
-    q08(part, lineitem, supplier, orders, customer, nation, region)
-    q09(lineitem, orders, part, nation, partsupp, supplier)
-    q10(lineitem, orders, customer, nation)
-    q11(partsupp, supplier, nation)
-    q12(lineitem, orders)
-    q13(customer, orders)
-    q14(lineitem, part)
-    q15(lineitem, supplier)
-    q16(part, partsupp, supplier)
-    q17(lineitem, part)
-    q18(lineitem, orders, customer)
-    q19(lineitem, part)
-    q20(lineitem, part, nation, partsupp, supplier)
-    q21(lineitem, orders, supplier, nation)
-    q22(customer, orders)
+    # q02(part, partsupp, supplier, nation, region)
+    # q03(lineitem, orders, customer)
+    # q04(lineitem, orders)
+    # q05(lineitem, orders, customer, nation, region, supplier)
+    # q06(lineitem)
+    # q07(lineitem, supplier, orders, customer, nation)
+    # q08(part, lineitem, supplier, orders, customer, nation, region)
+    # q09(lineitem, orders, part, nation, partsupp, supplier)
+    # q10(lineitem, orders, customer, nation)
+    # q11(partsupp, supplier, nation)
+    # q12(lineitem, orders)
+    # q13(customer, orders)
+    # q14(lineitem, part)
+    # q15(lineitem, supplier)
+    # q16(part, partsupp, supplier)
+    # q17(lineitem, part)
+    # q18(lineitem, orders, customer)
+    # q19(lineitem, part)
+    # q20(lineitem, part, nation, partsupp, supplier)
+    # q21(lineitem, orders, supplier, nation)
+    # q22(customer, orders)
     print("Total Query time (s): ", time.time() - t1)
 
 
@@ -883,9 +883,7 @@ def main():
     global spark
     parser = argparse.ArgumentParser(description="tpch-queries")
     parser.add_argument(
-        "--folder",
-        type=str,
-        help="The s3 path containing TPCH data",
+        "--path", type=str, required=True, help="path to the TPC-H dataset."
     )
     parser.add_argument(
         "--query",
@@ -925,13 +923,16 @@ def main():
         .getOrCreate()
     )
 
-    conf = spark.sparkContext._jsc.hadoopConfiguration()
-    conf.set("fs.s3a.access.key", account)
-    conf.set("fs.s3a.secret.key", key)
-    conf.set("fs.s3a.endpoint", args.endpoint)
-    spark.sparkContext.setLogLevel("DEBUG")
+    prefix = args.path
+    if args.path.contains("s3://"):
+        conf = spark.sparkContext._jsc.hadoopConfiguration()
+        conf.set("fs.s3a.access.key", account)
+        conf.set("fs.s3a.secret.key", key)
+        conf.set("fs.s3a.endpoint", args.endpoint)
+        spark.sparkContext.setLogLevel("DEBUG")
 
-    prefix = f"s3a://{data_folder}/"
+        prefix = f"s3a://{data_folder}/"
+    
     run_queries(prefix)
 
 
