@@ -4,10 +4,14 @@ import argparse
 import json
 import time
 import traceback
+from typing import Dict
 
 import xorbits
 import xorbits.pandas as pd
+pd.set_option("show_progress", False)
 
+import pandas
+pandas.set_option('display.max_columns', None)
 from pandas.core.frame import DataFrame as PandasDF
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -18,10 +22,21 @@ from common_utils import append_row, ANSWERS_BASE_DIR
 dataset_dict = {}
 
 
-def load_lineitem(root: str, include_io: bool = False):
+def load_lineitem(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
     if "lineitem" not in dataset_dict or include_io:
-        data_path = root + "/lineitem.parquet"
-        df = pd.read_parquet(data_path)
+        data_path = root + "/lineitem"
+        df = pd.read_parquet(
+            data_path,
+            use_arrow_dtype=use_arrow_dtype,
+            storage_options=storage_options,
+            gpu=gpu,
+        )
         df.L_SHIPDATE = pd.to_datetime(df.L_SHIPDATE, format="%Y-%m-%d")
         df.L_RECEIPTDATE = pd.to_datetime(df.L_RECEIPTDATE, format="%Y-%m-%d")
         df.L_COMMITDATE = pd.to_datetime(df.L_COMMITDATE, format="%Y-%m-%d")
@@ -32,10 +47,21 @@ def load_lineitem(root: str, include_io: bool = False):
     return result
 
 
-def load_part(root: str, include_io: bool = False):
+def load_part(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
     if "part" not in dataset_dict or include_io:
-        data_path = root + "/part.parquet"
-        df = pd.read_parquet(data_path)
+        data_path = root + "/part"
+        df = pd.read_parquet(
+            data_path,
+            use_arrow_dtype=use_arrow_dtype,
+            storage_options=storage_options,
+            gpu=gpu,
+        )
         result = df
         dataset_dict["part"] = result
     else:
@@ -43,10 +69,21 @@ def load_part(root: str, include_io: bool = False):
     return result
 
 
-def load_orders(root: str, include_io: bool = False):
+def load_orders(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
     if "orders" not in dataset_dict or include_io:
-        data_path = root + "/orders.parquet"
-        df = pd.read_parquet(data_path)
+        data_path = root + "/orders"
+        df = pd.read_parquet(
+            data_path,
+            use_arrow_dtype=use_arrow_dtype,
+            storage_options=storage_options,
+            gpu=gpu,
+        )
         df.O_ORDERDATE = pd.to_datetime(df.O_ORDERDATE, format="%Y-%m-%d")
         result = df
         dataset_dict["orders"] = result
@@ -55,10 +92,21 @@ def load_orders(root: str, include_io: bool = False):
     return result
 
 
-def load_customer(root: str, include_io: bool = False):
+def load_customer(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
     if "customer" not in dataset_dict or include_io:
-        data_path = root + "/customer.parquet"
-        df = pd.read_parquet(data_path)
+        data_path = root + "/customer"
+        df = pd.read_parquet(
+            data_path,
+            use_arrow_dtype=use_arrow_dtype,
+            storage_options=storage_options,
+            gpu=gpu,
+        )
         result = df
         dataset_dict["customer"] = result
     else:
@@ -66,10 +114,21 @@ def load_customer(root: str, include_io: bool = False):
     return result
 
 
-def load_nation(root: str, include_io: bool = False):
+def load_nation(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
     if "nation" not in dataset_dict or include_io:
-        data_path = root + "/nation.parquet"
-        df = pd.read_parquet(data_path)
+        data_path = root + "/nation"
+        df = pd.read_parquet(
+            data_path,
+            use_arrow_dtype=use_arrow_dtype,
+            storage_options=storage_options,
+            gpu=gpu,
+        )
         result = df
         dataset_dict["nation"] = result
     else:
@@ -77,10 +136,21 @@ def load_nation(root: str, include_io: bool = False):
     return result
 
 
-def load_region(root: str, include_io: bool = False):
+def load_region(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
     if "region" not in dataset_dict or include_io:
-        data_path = root + "/region.parquet"
-        df = pd.read_parquet(data_path)
+        data_path = root + "/region"
+        df = pd.read_parquet(
+            data_path,
+            use_arrow_dtype=use_arrow_dtype,
+            storage_options=storage_options,
+            gpu=gpu,
+        )
         result = df
         dataset_dict["region"] = result
     else:
@@ -88,10 +158,21 @@ def load_region(root: str, include_io: bool = False):
     return result
 
 
-def load_supplier(root: str, include_io: bool = False):
+def load_supplier(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
     if "supplier" not in dataset_dict or include_io:
-        data_path = root + "/supplier.parquet"
-        df = pd.read_parquet(data_path)
+        data_path = root + "/supplier"
+        df = pd.read_parquet(
+            data_path,
+            use_arrow_dtype=use_arrow_dtype,
+            storage_options=storage_options,
+            gpu=gpu,
+        )
         result = df
         dataset_dict["supplier"] = result
     else:
@@ -99,10 +180,21 @@ def load_supplier(root: str, include_io: bool = False):
     return result
 
 
-def load_partsupp(root: str, include_io: bool = False):
+def load_partsupp(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
     if "partsupp" not in dataset_dict or include_io:
-        data_path = root + "/partsupp.parquet"
-        df = pd.read_parquet(data_path)
+        data_path = root + "/partsupp"
+        df = pd.read_parquet(
+            data_path,
+            use_arrow_dtype=use_arrow_dtype,
+            storage_options=storage_options,
+            gpu=gpu,
+        )
         result = df
         dataset_dict["partsupp"] = result
     else:
@@ -110,8 +202,14 @@ def load_partsupp(root: str, include_io: bool = False):
     return result
 
 
-def q01(root: str, include_io: bool = False):
-    lineitem = load_lineitem(root, include_io)
+def q01(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    lineitem = load_lineitem(root, storage_options, include_io)
 
     date = pd.Timestamp("1998-09-02")
     lineitem_filtered = lineitem.loc[
@@ -168,12 +266,18 @@ def q01(root: str, include_io: bool = False):
     return total
 
 
-def q02(root: str, include_io: bool = False):
-    part = load_part(root, include_io)
-    partsupp = load_partsupp(root, include_io)
-    supplier = load_supplier(root, include_io)
-    nation = load_nation(root, include_io)
-    region = load_region(root, include_io)
+def q02(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    part = load_part(root, storage_options, include_io)
+    partsupp = load_partsupp(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
+    nation = load_nation(root, storage_options, include_io)
+    region = load_region(root, storage_options, include_io)
 
     nation_filtered = nation.loc[:, ["N_NATIONKEY", "N_NAME", "N_REGIONKEY"]]
     region_filtered = region[(region["R_NAME"] == "EUROPE")]
@@ -291,12 +395,18 @@ def q02(root: str, include_io: bool = False):
     return total
 
 
-def q03(root: str, include_io: bool = False):
-    lineitem = load_lineitem(root, include_io)
-    orders = load_orders(root, include_io)
-    customer = load_customer(root, include_io)
+def q03(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
+    customer = load_customer(root, storage_options, include_io)
 
-    date = pd.Timestamp("1995-03-04")
+    date = pd.Timestamp("1995-03-15")
     lineitem_filtered = lineitem.loc[
         :, ["L_ORDERKEY", "L_EXTENDEDPRICE", "L_DISCOUNT", "L_SHIPDATE"]
     ]
@@ -327,9 +437,15 @@ def q03(root: str, include_io: bool = False):
     return res
 
 
-def q04(root: str, include_io: bool = False):
-    lineitem = load_lineitem(root, include_io)
-    orders = load_orders(root, include_io)
+def q04(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
 
     date1 = pd.Timestamp("1993-11-01")
     date2 = pd.Timestamp("1993-08-01")
@@ -347,38 +463,48 @@ def q04(root: str, include_io: bool = False):
     return total
 
 
-def q05(root: str, include_io: bool = False):
-    lineitem = load_lineitem(root, include_io)
-    orders = load_orders(root, include_io)
-    customer = load_customer(root, include_io)
-    supplier = load_supplier(root, include_io)
-    nation = load_nation(root, include_io)
-    region = load_region(root, include_io)
+def q05(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
+    customer = load_customer(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
+    nation = load_nation(root, storage_options, include_io)
+    region = load_region(root, storage_options, include_io)
 
     date1 = pd.Timestamp("1996-01-01")
     date2 = pd.Timestamp("1997-01-01")
     rsel = region.R_NAME == "ASIA"
     osel = (orders.O_ORDERDATE >= date1) & (orders.O_ORDERDATE < date2)
-
     forders = orders[osel]
     fregion = region[rsel]
     jn1 = fregion.merge(nation, left_on="R_REGIONKEY", right_on="N_REGIONKEY")
     jn2 = jn1.merge(customer, left_on="N_NATIONKEY", right_on="C_NATIONKEY")
     jn3 = jn2.merge(forders, left_on="C_CUSTKEY", right_on="O_CUSTKEY")
     jn4 = jn3.merge(lineitem, left_on="O_ORDERKEY", right_on="L_ORDERKEY")
-
     jn5 = supplier.merge(
         jn4, left_on=["S_SUPPKEY", "S_NATIONKEY"], right_on=["L_SUPPKEY", "N_NATIONKEY"]
     )
-    jn5["REVENUE"] = jn5.L_EXTENDEDPRICE * (1.0 - jn5.L_DISCOUNT)
-    gb = jn5.groupby("N_NAME", as_index=False)["REVENUE"].sum()
-    total = gb.sort_values("REVENUE", ascending=False)
+    jn5["TMP"] = jn5.L_EXTENDEDPRICE * (1.0 - jn5.L_DISCOUNT)
+    gb = jn5.groupby("N_NAME", as_index=False, sort=False)["TMP"].sum()
+    total = gb.sort_values("TMP", ascending=False)
 
     return total
 
 
-def q06(root: str, include_io: bool = False):
-    lineitem = load_lineitem(root, include_io)
+def q06(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    lineitem = load_lineitem(root, storage_options, include_io)
 
     date1 = pd.Timestamp("1996-01-01")
     date2 = pd.Timestamp("1997-01-01")
@@ -398,12 +524,18 @@ def q06(root: str, include_io: bool = False):
     return total
 
 
-def q07(root: str, include_io: bool = False):
-    lineitem = load_lineitem(root, include_io)
-    orders = load_orders(root, include_io)
-    customer = load_customer(root, include_io)
-    supplier = load_supplier(root, include_io)
-    nation = load_nation(root, include_io)
+def q07(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
+    customer = load_customer(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
+    nation = load_nation(root, storage_options, include_io)
 
     lineitem_filtered = lineitem[
         (lineitem["L_SHIPDATE"] >= pd.Timestamp("1995-01-01"))
@@ -491,14 +623,20 @@ def q07(root: str, include_io: bool = False):
     return total
 
 
-def q08(root: str, include_io: bool = False):
-    part = load_part(root, include_io)
-    lineitem = load_lineitem(root, include_io)
-    orders = load_orders(root, include_io)
-    customer = load_customer(root, include_io)
-    supplier = load_supplier(root, include_io)
-    nation = load_nation(root, include_io)
-    region = load_region(root, include_io)
+def q08(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    part = load_part(root, storage_options, include_io)
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
+    customer = load_customer(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
+    nation = load_nation(root, storage_options, include_io)
+    region = load_region(root, storage_options, include_io)
 
     part_filtered = part[(part["P_TYPE"] == "ECONOMY ANODIZED STEEL")]
     part_filtered = part_filtered.loc[:, ["P_PARTKEY"]]
@@ -569,13 +707,19 @@ def q08(root: str, include_io: bool = False):
     return total
 
 
-def q09(root: str, include_io: bool = False):
-    part = load_part(root, include_io)
-    partsupp = load_partsupp(root, include_io)
-    lineitem = load_lineitem(root, include_io)
-    orders = load_orders(root, include_io)
-    supplier = load_supplier(root, include_io)
-    nation = load_nation(root, include_io)
+def q09(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    part = load_part(root, storage_options, include_io)
+    partsupp = load_partsupp(root, storage_options, include_io)
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
+    nation = load_nation(root, storage_options, include_io)
 
     psel = part.P_NAME.str.contains("ghost")
     fpart = part[psel]
@@ -596,11 +740,17 @@ def q09(root: str, include_io: bool = False):
     return total
 
 
-def q10(root: str, include_io: bool = False):
-    lineitem = load_lineitem(root, include_io)
-    orders = load_orders(root, include_io)
-    nation = load_nation(root, include_io)
-    customer = load_customer(root, include_io)
+def q10(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
+    nation = load_nation(root, storage_options, include_io)
+    customer = load_customer(root, storage_options, include_io)
 
     date1 = pd.Timestamp("1994-11-01")
     date2 = pd.Timestamp("1995-02-01")
@@ -631,10 +781,16 @@ def q10(root: str, include_io: bool = False):
     return total
 
 
-def q11(root: str, include_io: bool = False):
-    partsupp = load_partsupp(root, include_io)
-    supplier = load_supplier(root, include_io)
-    nation = load_nation(root, include_io)
+def q11(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    partsupp = load_partsupp(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
+    nation = load_nation(root, storage_options, include_io)
 
     partsupp_filtered = partsupp.loc[:, ["PS_PARTKEY", "PS_SUPPKEY"]]
     partsupp_filtered["TOTAL_COST"] = (
@@ -661,13 +817,19 @@ def q11(root: str, include_io: bool = False):
     return total
 
 
-def q12(root: str, include_io: bool = False):
-    lineitem = load_lineitem(root, include_io)
-    orders = load_orders(root, include_io)
+def q12(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
 
     date1 = pd.Timestamp("1994-01-01")
     date2 = pd.Timestamp("1995-01-01")
-    sel = (hpc/test_xorbits/df-bench/tpch/xorbits/slurm_xorbits_cpu.sh
+    sel = (
         (lineitem.L_RECEIPTDATE < date2)
         & (lineitem.L_COMMITDATE < date2)
         & (lineitem.L_SHIPDATE < date2)
@@ -692,9 +854,15 @@ def q12(root: str, include_io: bool = False):
     return total
 
 
-def q13(root: str, include_io: bool = False):
-    customer = load_customer(root, include_io)
-    orders = load_orders(root, include_io)
+def q13(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    customer = load_customer(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
 
     customer_filtered = customer.loc[:, ["C_CUSTKEY"]]
     orders_filtered = orders[
@@ -721,9 +889,15 @@ def q13(root: str, include_io: bool = False):
     return total
 
 
-def q14(root: str, include_io: bool = False):
-    lineitem = load_lineitem(root, include_io)
-    part = load_part(root, include_io)
+def q14(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    part = load_part(root, storage_options, include_io)
 
     startDate = pd.Timestamp("1994-03-01")
     endDate = pd.Timestamp("1994-04-01")
@@ -743,9 +917,15 @@ def q14(root: str, include_io: bool = False):
     return total
 
 
-def q15(root: str, include_io: bool = False):
-    lineitem = load_lineitem(root, include_io)
-    supplier = load_supplier(root, include_io)
+def q15(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
 
     lineitem_filtered = lineitem[
         (lineitem["L_SHIPDATE"] >= pd.Timestamp("1996-01-01"))
@@ -776,10 +956,16 @@ def q15(root: str, include_io: bool = False):
     return total
 
 
-def q16(root: str, include_io: bool = False):
-    part = load_part(root, include_io)
-    partsupp = load_partsupp(root, include_io)
-    supplier = load_supplier(root, include_io)
+def q16(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    part = load_part(root, storage_options, include_io)
+    partsupp = load_partsupp(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
 
     part_filtered = part[
         (part["P_BRAND"] != "Brand#45")
@@ -814,9 +1000,15 @@ def q16(root: str, include_io: bool = False):
     return total
 
 
-def q17(root: str, include_io: bool = False):
-    lineitem = load_lineitem(root, include_io)
-    part = load_part(root, include_io)
+def q17(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    part = load_part(root, storage_options, include_io)
 
     left = lineitem.loc[:, ["L_PARTKEY", "L_QUANTITY", "L_EXTENDEDPRICE"]]
     right = part[((part["P_BRAND"] == "Brand#23") & (part["P_CONTAINER"] == "MED BOX"))]
@@ -842,10 +1034,16 @@ def q17(root: str, include_io: bool = False):
     return total
 
 
-def q18(root: str, include_io: bool = False):
-    lineitem = load_lineitem(root, include_io)
-    orders = load_orders(root, include_io)
-    customer = load_customer(root, include_io)
+def q18(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
+    customer = load_customer(root, storage_options, include_io)
 
     gb1 = lineitem.groupby("L_ORDERKEY", as_index=False, sort=False)["L_QUANTITY"].sum()
     fgb1 = gb1[gb1.L_QUANTITY > 300]
@@ -862,9 +1060,15 @@ def q18(root: str, include_io: bool = False):
     return total
 
 
-def q19(root: str, include_io: bool = False):
-    lineitem = load_lineitem(root, include_io)
-    part = load_part(root, include_io)
+def q19(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    part = load_part(root, storage_options, include_io)
 
     Brand31 = "Brand#31"
     Brand43 = "Brand#43"
@@ -965,12 +1169,18 @@ def q19(root: str, include_io: bool = False):
     return total
 
 
-def q20(root: str, include_io: bool = False):
-    lineitem = load_lineitem(root, include_io)
-    part = load_part(root, include_io)
-    nation = load_nation(root, include_io)
-    partsupp = load_partsupp(root, include_io)
-    supplier = load_supplier(root, include_io)
+def q20(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    part = load_part(root, storage_options, include_io)
+    nation = load_nation(root, storage_options, include_io)
+    partsupp = load_partsupp(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
 
     date1 = pd.Timestamp("1996-01-01")
     date2 = pd.Timestamp("1997-01-01")
@@ -999,11 +1209,17 @@ def q20(root: str, include_io: bool = False):
     return total
 
 
-def q21(root: str, include_io: bool = False):
-    lineitem = load_lineitem(root, include_io)
-    orders = load_orders(root, include_io)
-    supplier = load_supplier(root, include_io)
-    nation = load_nation(root, include_io)
+def q21(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
+    nation = load_nation(root, storage_options, include_io)
 
     lineitem_filtered = lineitem.loc[
         :, ["L_ORDERKEY", "L_SUPPKEY", "L_RECEIPTDATE", "L_COMMITDATE"]
@@ -1069,9 +1285,15 @@ def q21(root: str, include_io: bool = False):
     return total
 
 
-def q22(root: str, include_io: bool = False):
-    customer = load_customer(root, include_io)
-    orders = load_orders(root, include_io)
+def q22(
+    root: str,
+    storage_options: Dict,
+    include_io: bool = False,
+    use_arrow_dtype: bool = None,
+    gpu: bool = False,
+):
+    customer = load_customer(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
 
     customer_filtered = customer.loc[:, ["C_ACCTBAL", "C_CUSTKEY"]]
     customer_filtered["CNTRYCODE"] = customer["C_PHONE"].str.slice(0, 2)
@@ -1222,24 +1444,39 @@ def test_results(q_num: int, result_df: PandasDF):
 
 def run_queries(
     path,
+    storage_options,
     queries,
-    log_timing=True,
+    log_time=True,
     include_io=False,
-    test_result=True,
+    test_result=False,
     print_result=False,
+    use_arrow_dtype=False,
+    gpu=False,
 ):
     print("Start data loading")
     total_start = time.time()
     for query in queries:
         loaders = query_to_loaders[query]
         for loader in loaders:
-            loader(path, include_io)
+            loader(
+                path,
+                storage_options,
+                include_io,
+                use_arrow_dtype=use_arrow_dtype,
+                gpu=gpu,
+            )
     print(f"Data loading time (s): {time.time() - total_start}")
     total_start = time.time()
     for query in queries:
         try:
             t1 = time.time()
-            result = query_to_runner[query](path, include_io)
+            result = query_to_runner[query](
+                path,
+                storage_options,
+                include_io,
+                use_arrow_dtype=use_arrow_dtype,
+                gpu=gpu,
+            )
             result = result.execute()
             dur = time.time() - t1
             success = True
@@ -1252,7 +1489,7 @@ def run_queries(
             dur = 0.0
             success = False
         finally:
-            if log_timing:
+            if log_time:
                 append_row("xorbits", query, dur, xorbits.__version__, success)
     print(f"Total query execution time (s): {time.time() - total_start}")
 
@@ -1276,7 +1513,13 @@ def main():
         help="whitespace separated TPC-H queries to run.",
     )
     parser.add_argument(
-        "--log_timing",
+        "--endpoint",
+        type=str,
+        required=False,
+        help="the endpoint of existing Xorbits cluster.",
+    )
+    parser.add_argument(
+        "--log_time",
         action="store_true",
         help="log time metrics or not.",
     )
@@ -1286,7 +1529,7 @@ def main():
         help="include IO or not.",
     )
     parser.add_argument(
-        "--test_answer",
+        "--test_result",
         action="store_true",
         help="test results with official answers.",
     )
@@ -1296,20 +1539,42 @@ def main():
         help="print result.",
     )
     parser.add_argument(
-        "--endpoint",
+        "--use_arrow_dtype",
+        default=False,
+        action="store_true",
+        help="Use arrow dtype.",
+    )
+    parser.add_argument(
+        "--gpu",
+        default=False,
+        action="store_true",
+        help="Use GPUs.",
+    )
+    parser.add_argument(
+        "--cuda_devices",
+        type=int,
+        nargs="+",
+        required=False,
+        help="Comma separated cuda devices to use.",
+    )
+    parser.add_argument(
+        "--mmap_root_dir",
         type=str,
         required=False,
-        help="the endpoint of existing Xorbits cluster.",
+        help="The directory used by mmap storage backend.",
     )
+
     args = parser.parse_args()
-    log_timing = args.log_timing
-    include_io = args.include_io
-    test_answer = args.test_answer
-    print_result = args.print_result
+    print(f"Use GPU: {args.gpu}")
+    print(f"Use Arrow: {args.use_arrow_dtype}")
+    if args.mmap_root_dir is not None:
+        storage_config = {"mmap": {"root_dirs": args.mmap_root_dir}}
+        print(f"Use mmap to run: {args.mmap_root_dir}")
+    else:
+        storage_config = None
 
     # path to TPC-H data in parquet.
-    path = args.path
-    print(f"Path: {path}")
+    print(f"Path: {args.path}")
 
     # credentials to access the datasource.
     storage_options = {}
@@ -1322,10 +1587,26 @@ def main():
     if args.queries is not None:
         queries = args.queries
     print(f"Queries to run: {queries}")
+    print(f"Include IO: {args.include_io}")
 
-    xorbits.init(address=args.endpoint)
+    if args.endpoint == "local" or args.endpoint is None:
+        address = "127.0.0.1"
+    elif args.endpoint:
+        address = args.endpoint
+    xorbits.init(
+        address=address, cuda_devices=args.cuda_devices, storage_config=storage_config
+    )
+
     try:
-        run_queries(path, queries, log_timing, include_io, test_answer, print_result)
+        run_queries(
+            args.path,
+            storage_options,
+            queries,
+            args.log_time,
+            args.include_io,
+            args.test_result,
+            args.print_result,
+        )
     finally:
         xorbits.shutdown()
 

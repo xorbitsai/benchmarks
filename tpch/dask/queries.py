@@ -1,119 +1,146 @@
+import os
+import sys
 import argparse
 import json
 import time
+import traceback
 from datetime import datetime
 from typing import Dict
 
 import pandas
+from pandas.core.frame import DataFrame as PandasDF
 
+import dask
 import dask.dataframe as pd
 from dask.distributed import Client, wait
 
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
+from common_utils import append_row, ANSWERS_BASE_DIR
 
-def load_lineitem(root: str, storage_options: Dict, dataset: Dict):
-    if "lineitem" in dataset:
-        return
-
-    data_path = root + "/lineitem"
-    df = pd.read_parquet(
-        data_path,
-        storage_options=storage_options,
-    )
-    df.L_SHIPDATE = pd.to_datetime(df.L_SHIPDATE, format="%Y-%m-%d")
-    df.L_RECEIPTDATE = pd.to_datetime(df.L_RECEIPTDATE, format="%Y-%m-%d")
-    df.L_COMMITDATE = pd.to_datetime(df.L_COMMITDATE, format="%Y-%m-%d")
-    dataset["lineitem"] = df
+dataset_dict = {}
 
 
-def load_part(root: str, storage_options: Dict, dataset: Dict):
-    if "part" in dataset:
-        return
-
-    data_path = root + "/part"
-    df = pd.read_parquet(
-        data_path,
-        storage_options=storage_options,
-    )
-    dataset["part"] = df
-
-
-def load_orders(root: str, storage_options: Dict, dataset: Dict):
-    if "orders" in dataset:
-        return
-
-    data_path = root + "/orders"
-    df = pd.read_parquet(
-        data_path,
-        storage_options=storage_options,
-    )
-    df.O_ORDERDATE = pd.to_datetime(df.O_ORDERDATE, format="%Y-%m-%d")
-    dataset["orders"] = df
+def load_lineitem(root: str, storage_options: Dict, include_io: bool = False):
+    if "lineitem" not in dataset_dict or include_io:
+        data_path = root + "/lineitem"
+        df = pd.read_parquet(
+            data_path,
+            storage_options=storage_options,
+        )
+        df.L_SHIPDATE = pd.to_datetime(df.L_SHIPDATE, format="%Y-%m-%d")
+        df.L_RECEIPTDATE = pd.to_datetime(df.L_RECEIPTDATE, format="%Y-%m-%d")
+        df.L_COMMITDATE = pd.to_datetime(df.L_COMMITDATE, format="%Y-%m-%d")
+        dataset_dict["lineitem"] = df
+        result = df
+    else:
+        result = dataset_dict["lineitem"]
+    return result
 
 
-def load_customer(root: str, storage_options: Dict, dataset: Dict):
-    if "customer" in dataset:
-        return
-
-    data_path = root + "/customer"
-    df = pd.read_parquet(
-        data_path,
-        storage_options=storage_options,
-    )
-    dataset["customer"] = df
-
-
-def load_nation(root: str, storage_options: Dict, dataset: Dict):
-    if "nation" in dataset:
-        return
-
-    data_path = root + "/nation"
-    df = pd.read_parquet(
-        data_path,
-        storage_options=storage_options,
-    )
-    dataset["nation"] = df
+def load_part(root: str, storage_options: Dict, include_io: bool = False):
+    if "part" not in dataset_dict or include_io:
+        data_path = root + "/part"
+        df = pd.read_parquet(
+            data_path,
+            storage_options=storage_options,
+        )
+        dataset_dict["part"] = df
+        result = df
+    else:
+        result = dataset_dict["part"]
+    return result
 
 
-def load_region(root: str, storage_options: Dict, dataset: Dict):
-    if "region" in dataset:
-        return
-
-    data_path = root + "/region"
-    df = pd.read_parquet(
-        data_path,
-        storage_options=storage_options,
-    )
-    dataset["region"] = df
-
-
-def load_supplier(root: str, storage_options: Dict, dataset: Dict):
-    if "supplier" in dataset:
-        return
-
-    data_path = root + "/supplier"
-    df = pd.read_parquet(
-        data_path,
-        storage_options=storage_options,
-    )
-    dataset["supplier"] = df
+def load_orders(root: str, storage_options: Dict, include_io: bool = False):
+    if "orders" not in dataset_dict or include_io:
+        data_path = root + "/orders"
+        df = pd.read_parquet(
+            data_path,
+            storage_options=storage_options,
+        )
+        df.O_ORDERDATE = pd.to_datetime(df.O_ORDERDATE, format="%Y-%m-%d")
+        dataset_dict["orders"] = df
+        result = df
+    else:
+        result = dataset_dict["orders"]
+    return result
 
 
-def load_partsupp(root: str, storage_options: Dict, dataset: Dict):
-    if "partsupp" in dataset:
-        return
+def load_customer(root: str, storage_options: Dict, include_io: bool = False):
+    if "customer" not in dataset_dict or include_io:
+        data_path = root + "/customer"
+        df = pd.read_parquet(
+            data_path,
+            storage_options=storage_options,
+        )
+        dataset_dict["customer"] = df
+        result = df
+    else:
+        result = dataset_dict["customer"]
+    return result
 
-    data_path = root + "/partsupp"
-    df = pd.read_parquet(
-        data_path,
-        storage_options=storage_options,
-    )
-    dataset["partsupp"] = df
+
+def load_nation(root: str, storage_options: Dict, include_io: bool = False):
+    if "nation" not in dataset_dict or include_io:
+        data_path = root + "/nation"
+        df = pd.read_parquet(
+            data_path,
+            storage_options=storage_options,
+        )
+        dataset_dict["nation"] = df
+        result = df
+    else:
+        result = dataset_dict["nation"]
+    return result
 
 
-def q01(dataset: Dict):
-    lineitem = dataset["lineitem"]
+def load_region(root: str, storage_options: Dict, include_io: bool = False):
+    if "region" not in dataset_dict or include_io:
+        data_path = root + "/region"
+        df = pd.read_parquet(
+            data_path,
+            storage_options=storage_options,
+        )
+        dataset_dict["region"] = df
+        result = df
+    else:
+        result = dataset_dict["region"]
+    return result
 
-    t1 = time.time()
+
+def load_supplier(root: str, storage_options: Dict, include_io: bool = False):
+    if "supplier" not in dataset_dict or include_io:
+        data_path = root + "/supplier"
+        df = pd.read_parquet(
+            data_path,
+            storage_options=storage_options,
+        )
+        dataset_dict["supplier"] = df
+        result = df
+    else:
+        result = dataset_dict["supplier"]
+    return result
+
+
+def load_partsupp(root: str, storage_options: Dict, include_io: bool = False):
+    if "partsupp" not in dataset_dict or include_io:
+        data_path = root + "/partsupp"
+        df = pd.read_parquet(
+            data_path,
+            storage_options=storage_options,
+        )
+        dataset_dict["partsupp"] = df
+        result = df
+    else:
+        result = dataset_dict["partsupp"]
+    return result
+
+
+def q01(root: str, storage_options: Dict, include_io: bool = False):
+    lineitem = load_lineitem(root, storage_options, include_io)
+
     date = datetime.strptime("1998-09-02", "%Y-%m-%d")
     lineitem_filtered = lineitem.loc[
         :,
@@ -156,18 +183,16 @@ def q01(dataset: Dict):
     )
 
     total = total.compute().reset_index().sort_values(["L_RETURNFLAG", "L_LINESTATUS"])
-    print(total)
-    print("Q01 Execution time (s): ", time.time() - t1)
+    return total
 
 
-def q02(dataset: Dict):
-    part = dataset["part"]
-    partsupp = dataset["partsupp"]
-    supplier = dataset["supplier"]
-    nation = dataset["nation"]
-    region = dataset["region"]
+def q02(root: str, storage_options: Dict, include_io: bool = False):
+    part = load_part(root, storage_options, include_io)
+    partsupp = load_partsupp(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
+    nation = load_nation(root, storage_options, include_io)
+    region = load_region(root, storage_options, include_io)
 
-    t1 = time.time()
     nation_filtered = nation.loc[:, ["N_NATIONKEY", "N_NAME", "N_REGIONKEY"]]
     region_filtered = region[(region["R_NAME"] == "EUROPE")]
     region_filtered = region_filtered.loc[:, ["R_REGIONKEY"]]
@@ -281,16 +306,16 @@ def q02(dataset: Dict):
         ],
     )
 
-    print(total)
-    print("Q02 Execution time (s): ", time.time() - t1)
+    total = total.head(100)
+
+    return total
 
 
-def q03(dataset: Dict):
-    lineitem = dataset["lineitem"]
-    orders = dataset["orders"]
-    customer = dataset["customer"]
+def q03(root: str, storage_options: Dict, include_io: bool = False):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
+    customer = load_customer(root, storage_options, include_io)
 
-    t1 = time.time()
     date = datetime.strptime("1995-03-04", "%Y-%m-%d")
     lineitem_filtered = lineitem.loc[
         :, ["L_ORDERKEY", "L_EXTENDEDPRICE", "L_DISCOUNT", "L_SHIPDATE"]
@@ -317,15 +342,14 @@ def q03(dataset: Dict):
     )
 
     res = total.loc[:, ["L_ORDERKEY", "TMP", "O_ORDERDATE", "O_SHIPPRIORITY"]]
-    print(res.head(10))
-    print("Q03 Execution time (s): ", time.time() - t1)
+    res = res.head(10)
+    return res
 
 
-def q04(dataset: Dict):
-    lineitem = dataset["lineitem"]
-    orders = dataset["orders"]
+def q04(root: str, storage_options: Dict, include_io: bool = False):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
 
-    t1 = time.time()
     date1 = datetime.strptime("1993-11-01", "%Y-%m-%d")
     date2 = datetime.strptime("1993-08-01", "%Y-%m-%d")
     lsel = lineitem.L_COMMITDATE < lineitem.L_RECEIPTDATE
@@ -342,19 +366,18 @@ def q04(dataset: Dict):
         .reset_index()
         .sort_values(["O_ORDERPRIORITY"])
     )
-    print(total.compute())
-    print("Q04 Execution time (s): ", time.time() - t1)
+    total = total.compute()
+    return total
 
 
-def q05(dataset: Dict):
-    lineitem = dataset["lineitem"]
-    orders = dataset["orders"]
-    customer = dataset["customer"]
-    supplier = dataset["supplier"]
-    nation = dataset["nation"]
-    region = dataset["region"]
+def q05(root: str, storage_options: Dict, include_io: bool = False):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
+    customer = load_customer(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
+    nation = load_nation(root, storage_options, include_io)
+    region = load_region(root, storage_options, include_io)
 
-    t1 = time.time()
     date1 = datetime.strptime("1996-01-01", "%Y-%m-%d")
     date2 = datetime.strptime("1997-01-01", "%Y-%m-%d")
 
@@ -375,14 +398,12 @@ def q05(dataset: Dict):
     gb = jn5.groupby("N_NAME")["TMP"].sum()
 
     total = gb.compute().reset_index().sort_values("TMP", ascending=False)
-    print(total)
-    print("Q05 Execution time (s): ", time.time() - t1)
+    return total
 
 
-def q06(dataset: Dict):
-    lineitem = dataset["lineitem"]
+def q06(root: str, storage_options: Dict, include_io: bool = False):
+    lineitem = load_lineitem(root, storage_options, include_io)
 
-    t1 = time.time()
     date1 = datetime.strptime("1996-01-01", "%Y-%m-%d")
     date2 = datetime.strptime("1997-01-01", "%Y-%m-%d")
 
@@ -398,19 +419,16 @@ def q06(dataset: Dict):
     )
     flineitem = lineitem_filtered[sel]
     total = (flineitem.L_EXTENDEDPRICE * flineitem.L_DISCOUNT).sum()
-    print(total.compute())
-    print("Q06 Execution time (s): ", time.time() - t1)
+    total = total.compute()
+    return total
 
 
-def q07(dataset: Dict):
-    lineitem = dataset["lineitem"]
-    orders = dataset["orders"]
-    customer = dataset["customer"]
-    supplier = dataset["supplier"]
-    nation = dataset["nation"]
-
-    """This version is faster than q07_old. Keeping the old one for reference"""
-    t1 = time.time()
+def q07(root: str, storage_options: Dict, include_io: bool = False):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
+    customer = load_customer(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
+    nation = load_nation(root, storage_options, include_io)
 
     lineitem_filtered = lineitem[
         (lineitem["L_SHIPDATE"] >= datetime.strptime("1995-01-01", "%Y-%m-%d"))
@@ -504,20 +522,18 @@ def q07(dataset: Dict):
             ],
         )
     )
-    print(total)
-    print("Q07 Execution time (s): ", time.time() - t1)
+    return total
 
 
-def q08(dataset: Dict):
-    part = dataset["part"]
-    lineitem = dataset["lineitem"]
-    orders = dataset["orders"]
-    customer = dataset["customer"]
-    supplier = dataset["supplier"]
-    nation = dataset["nation"]
-    region = dataset["region"]
+def q08(root: str, storage_options: Dict, include_io: bool = False):
+    part = load_part(root, storage_options, include_io)
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
+    customer = load_customer(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
+    nation = load_nation(root, storage_options, include_io)
+    region = load_region(root, storage_options, include_io)
 
-    t1 = time.time()
     part_filtered = part[(part["P_TYPE"] == "ECONOMY ANODIZED STEEL")]
     part_filtered = part_filtered.loc[:, ["P_PARTKEY"]]
     lineitem_filtered = lineitem.loc[:, ["L_PARTKEY", "L_SUPPKEY", "L_ORDERKEY"]]
@@ -587,19 +603,17 @@ def q08(dataset: Dict):
         )
     )
     total.columns = ["O_YEAR", "MKT_SHARE"]
-    print(total)
-    print("Q08 Execution time (s): ", time.time() - t1)
+    return total
 
 
-def q09(dataset: Dict):
-    part = dataset["part"]
-    partsupp = dataset["partsupp"]
-    lineitem = dataset["lineitem"]
-    orders = dataset["orders"]
-    supplier = dataset["supplier"]
-    nation = dataset["nation"]
+def q09(root: str, storage_options: Dict, include_io: bool = False):
+    part = load_part(root, storage_options, include_io)
+    partsupp = load_partsupp(root, storage_options, include_io)
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
+    nation = load_nation(root, storage_options, include_io)
 
-    t1 = time.time()
     psel = part.P_NAME.str.contains("ghost")
     fpart = part[psel]
     jn1 = lineitem.merge(fpart, left_on="L_PARTKEY", right_on="P_PARTKEY")
@@ -619,15 +633,14 @@ def q09(dataset: Dict):
         .reset_index()
         .sort_values(["N_NAME", "O_YEAR"], ascending=[True, False])
     )
-    print(total)
-    print("Q09 Execution time (s): ", time.time() - t1)
+    return total
 
 
-def q10(dataset: Dict):
-    lineitem = dataset["lineitem"]
-    orders = dataset["orders"]
-    nation = dataset["nation"]
-    customer = dataset["customer"]
+def q10(root: str, storage_options: Dict, include_io: bool = False):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
+    nation = load_nation(root, storage_options, include_io)
+    customer = load_customer(root, storage_options, include_io)
 
     t1 = time.time()
     date1 = datetime.strptime("1994-11-01", "%Y-%m-%d")
@@ -652,17 +665,16 @@ def q10(dataset: Dict):
         ],
     )["TMP"].sum()
     total = gb.compute().reset_index().sort_values("TMP", ascending=False)
-    print(total.head(20))
-    print(total.shape)
-    print("Q10 Execution time (s): ", time.time() - t1)
+    total = total.head(20)
+
+    return total
 
 
-def q11(dataset: Dict):
-    partsupp = dataset["partsupp"]
-    supplier = dataset["supplier"]
-    nation = dataset["nation"]
+def q11(root: str, storage_options: Dict, include_io: bool = False):
+    partsupp = load_partsupp(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
+    nation = load_nation(root, storage_options, include_io)
 
-    t1 = time.time()
     partsupp_filtered = partsupp.loc[:, ["PS_PARTKEY", "PS_SUPPKEY"]]
     partsupp_filtered["TOTAL_COST"] = (
         partsupp["PS_SUPPLYCOST"] * partsupp["PS_AVAILQTY"]
@@ -684,15 +696,14 @@ def q11(dataset: Dict):
     total = total.rename(columns={"TOTAL_COST": "VALUE"})
     total = total[total["VALUE"] > sum_val]
     total = total.compute().sort_values("VALUE", ascending=False)
-    print(total)
-    print("Q11 Execution time (s): ", time.time() - t1)
+    
+    return total
 
 
-def q12(dataset: Dict):
-    lineitem = dataset["lineitem"]
-    orders = dataset["orders"]
+def q12(root: str, storage_options: Dict, include_io: bool = False):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
 
-    t1 = time.time()
     date1 = datetime.strptime("1994-01-01", "%Y-%m-%d")
     date2 = datetime.strptime("1995-01-01", "%Y-%m-%d")
     sel = (
@@ -718,15 +729,14 @@ def q12(dataset: Dict):
     g2_agg = pd.Aggregation("g2", g2, lambda s0: s0.sum())
     total = gb.agg([g1_agg, g2_agg])
     total = total.compute().reset_index().sort_values("L_SHIPMODE")
-    print(total)
-    print("Q12 Execution time (s): ", time.time() - t1)
+
+    return total
 
 
-def q13(dataset: Dict):
-    customer = dataset["customer"]
-    orders = dataset["orders"]
+def q13(root: str, storage_options: Dict, include_io: bool = False):
+    customer = load_customer(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
 
-    t1 = time.time()
     customer_filtered = customer.loc[:, ["C_CUSTKEY"]]
     orders_filtered = orders[
         ~orders["O_COMMENT"].str.contains("special(\\S|\\s)*requests")
@@ -749,15 +759,14 @@ def q13(dataset: Dict):
             False,
         ],
     )
-    print(total)
-    print("Q13 Execution time (s): ", time.time() - t1)
+
+    return total
 
 
-def q14(dataset: Dict):
-    lineitem = dataset["lineitem"]
-    part = dataset["part"]
+def q14(root: str, storage_options: Dict, include_io: bool = False):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    part = load_part(root, storage_options, include_io)
 
-    t1 = time.time()
     startDate = datetime.strptime("1994-03-01", "%Y-%m-%d")
     endDate = datetime.strptime("1994-04-01", "%Y-%m-%d")
     p_type_like = "PROMO"
@@ -772,15 +781,13 @@ def q14(dataset: Dict):
     jn = flineitem.merge(part_filtered, left_on="L_PARTKEY", right_on="P_PARTKEY")
     jn["TMP"] = jn.L_EXTENDEDPRICE * (1.0 - jn.L_DISCOUNT)
     total = jn[jn.P_TYPE.str.startswith(p_type_like)].TMP.sum() * 100 / jn.TMP.sum()
-    print(total.compute())
-    print("Q14 Execution time (s): ", time.time() - t1)
 
+    return total
 
-def q15(dataset: Dict):
-    lineitem = dataset["lineitem"]
-    supplier = dataset["supplier"]
+def q15(root: str, storage_options: Dict, include_io: bool = False):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
 
-    t1 = time.time()
     lineitem_filtered = lineitem[
         (lineitem["L_SHIPDATE"] >= datetime.strptime("1996-01-01", "%Y-%m-%d"))
         & (lineitem["L_SHIPDATE"] < (datetime.strptime("1996-04-01", "%Y-%m-%d")))
@@ -804,16 +811,15 @@ def q15(dataset: Dict):
     total = total.loc[
         :, ["S_SUPPKEY", "S_NAME", "S_ADDRESS", "S_PHONE", "TOTAL_REVENUE"]
     ]
-    print(total.compute())
-    print("Q15 Execution time (s): ", time.time() - t1)
+    
+    return total
 
 
-def q16(dataset: Dict):
-    part = dataset["part"]
-    partsupp = dataset["partsupp"]
-    supplier = dataset["supplier"]
+def q16(root: str, storage_options: Dict, include_io: bool = False):
+    part = load_part(root, storage_options, include_io)
+    partsupp = load_partsupp(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
 
-    t1 = time.time()
     part_filtered = part[
         (part["P_BRAND"] != "Brand#45")
         & (~part["P_TYPE"].str.contains("^MEDIUM POLISHED"))
@@ -845,15 +851,14 @@ def q16(dataset: Dict):
         by=["SUPPLIER_CNT", "P_BRAND", "P_TYPE", "P_SIZE"],
         ascending=[False, True, True, True],
     )
-    print(total)
-    print("Q16 Execution time (s): ", time.time() - t1)
+
+    return total
 
 
-def q17(dataset: Dict):
-    lineitem = dataset["lineitem"]
-    part = dataset["part"]
+def q17(root: str, storage_options: Dict, include_io: bool = False):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    part = load_part(root, storage_options, include_io)
 
-    t1 = time.time()
     left = lineitem.loc[:, ["L_PARTKEY", "L_QUANTITY", "L_EXTENDEDPRICE"]]
     right = part[((part["P_BRAND"] == "Brand#23") & (part["P_CONTAINER"] == "MED BOX"))]
     right = right.loc[:, ["P_PARTKEY"]]
@@ -879,16 +884,15 @@ def q17(dataset: Dict):
     total = pandas.DataFrame(
         {"avg_yearly": [(total["L_EXTENDEDPRICE"].sum() / 7.0).compute()]}
     )
-    print(total)
-    print("Q17 Execution time (s): ", time.time() - t1)
+
+    return total
 
 
-def q18(dataset: Dict):
-    lineitem = dataset["lineitem"]
-    orders = dataset["orders"]
-    customer = dataset["customer"]
+def q18(root: str, storage_options: Dict, include_io: bool = False):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
+    customer = load_customer(root, storage_options, include_io)
 
-    t1 = time.time()
     gb1 = lineitem.groupby("L_ORDERKEY")["L_QUANTITY"].sum().reset_index()
     fgb1 = gb1[gb1.L_QUANTITY > 300]
     jn1 = fgb1.merge(orders, left_on="L_ORDERKEY", right_on="O_ORDERKEY")
@@ -901,13 +905,14 @@ def q18(dataset: Dict):
         .reset_index()
         .sort_values(["O_TOTALPRICE", "O_ORDERDATE"], ascending=[False, True])
     )
-    print(total.head(100))
-    print("Q18 Execution time (s): ", time.time() - t1)
+    total = total.head(100)
+
+    return total
 
 
-def q19(dataset: Dict):
-    lineitem = dataset["lineitem"]
-    part = dataset["part"]
+def q19(root: str, storage_options: Dict, include_io: bool = False):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    part = load_part(root, storage_options, include_io)
 
     t1 = time.time()
     Brand31 = "Brand#31"
@@ -1011,18 +1016,17 @@ def q19(dataset: Dict):
     )
     jn = jn[jnsel]
     total = (jn.L_EXTENDEDPRICE * (1.0 - jn.L_DISCOUNT)).sum()
-    print(total.compute())
-    print("Q19 Execution time (s): ", time.time() - t1)
+
+    return total
 
 
-def q20(dataset: Dict):
-    lineitem = dataset["lineitem"]
-    part = dataset["part"]
-    nation = dataset["nation"]
-    partsupp = dataset["partsupp"]
-    supplier = dataset["supplier"]
+def q20(root: str, storage_options: Dict, include_io: bool = False):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    part = load_part(root, storage_options, include_io)
+    nation = load_nation(root, storage_options, include_io)
+    partsupp = load_partsupp(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
 
-    t1 = time.time()
     date1 = datetime.strptime("1996-01-01", "%Y-%m-%d")
     date2 = datetime.strptime("1997-01-01", "%Y-%m-%d")
     psel = part.P_NAME.str.startswith("azure")
@@ -1048,15 +1052,15 @@ def q20(dataset: Dict):
     jn4 = fnation.merge(jn3, left_on="N_NATIONKEY", right_on="S_NATIONKEY")
     jn4 = jn4.loc[:, ["S_NAME", "S_ADDRESS"]]
     total = jn4.compute().sort_values("S_NAME").drop_duplicates()
-    print(total)
-    print("Q20 Execution time (s): ", time.time() - t1)
+
+    return total
 
 
-def q21(dataset: Dict):
-    lineitem = dataset["lineitem"]
-    orders = dataset["orders"]
-    supplier = dataset["supplier"]
-    nation = dataset["nation"]
+def q21(root: str, storage_options: Dict, include_io: bool = False):
+    lineitem = load_lineitem(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
+    supplier = load_supplier(root, storage_options, include_io)
+    nation = load_nation(root, storage_options, include_io)
 
     t1 = time.time()
     lineitem_filtered = lineitem.loc[
@@ -1129,15 +1133,14 @@ def q21(dataset: Dict):
             True,
         ],
     )
-    print(total)
-    print("Q21 Execution time (s): ", time.time() - t1)
+
+    return total
 
 
-def q22(dataset: Dict):
-    customer = dataset["customer"]
-    orders = dataset["orders"]
+def q22(root: str, storage_options: Dict, include_io: bool = False):
+    customer = load_customer(root, storage_options, include_io)
+    orders = load_orders(root, storage_options, include_io)
 
-    t1 = time.time()
     customer_filtered = customer.loc[:, ["C_ACCTBAL", "C_CUSTKEY"]]
     customer_filtered["CNTRYCODE"] = customer["C_PHONE"].str.slice(0, 2)
     customer_filtered = customer_filtered[
@@ -1174,8 +1177,8 @@ def q22(dataset: Dict):
             True,
         ],
     )
-    print(total)
-    print("Q22 Execution time (s): ", time.time() - t1)
+    
+    return total
 
 
 query_to_loaders = {
@@ -1251,36 +1254,91 @@ query_to_runner = {
 }
 
 
-def run_queries(path, storage_options, client, queries):
-    dataset = {}
+def get_query_answer(query: int, base_dir: str = ANSWERS_BASE_DIR) -> PandasDF:
+    answer_df = pandas.read_csv(
+        os.path.join(base_dir, f"q{query}.out"),
+        sep="|",
+        parse_dates=True,
+        infer_datetime_format=True,
+    )
+    return answer_df.rename(columns=lambda x: x.strip())
+
+
+def test_results(q_num: int, result_df: PandasDF):
+    answer = get_query_answer(q_num)
+
+    for column_index in range(len(answer.columns)):
+        column_name = answer.columns[column_index]
+        column_data_type = answer.iloc[:, column_index].dtype
+
+        s1 = result_df.iloc[:, column_index]
+        s2 = answer.iloc[:, column_index]
+
+        if column_data_type.name == "object":
+            s1 = s1.astype("string").apply(lambda x: x.strip())
+            s2 = s2.astype("string").apply(lambda x: x.strip())
+
+        pandas.testing.assert_series_equal(
+            left=s1,
+            right=s2,
+            check_index=False,
+            check_names=False,
+            check_exact=False,
+            rtol=1e-2,
+        )
+
+
+def run_queries(path, 
+        storage_options, 
+        client, 
+        queries,
+        log_time=True,
+        include_io=False,
+        test_result=False,
+        print_result=False
+    ):
     total_start = time.time()
     print("Start data loading")
     for query in queries:
         loaders = query_to_loaders[query]
         for loader in loaders:
-            loader(path, storage_options, dataset)
+            loader(path, storage_options, include_io)
     print(f"Data loading time (s): {time.time() - total_start}")
 
     total_start = time.time()
     print("Start data persisting")
-    for table_name in dataset:
-        df = dataset[table_name]
+    for table_name in dataset_dict:
+        df = dataset_dict[table_name]
         start = time.time()
         df = client.persist(df)
         wait(df)
-        dataset[table_name] = df
+        dataset_dict[table_name] = df
         print(f"{table_name} persisting time (s): {time.time() - start}")
-
     print(f"Total data persisting time (s): {time.time() - total_start}")
 
     total_start = time.time()
     for query in queries:
-        query_to_runner[query](dataset)
+        try:
+            t1 = time.time()
+            result = query_to_runner[query](path, storage_options, include_io)
+            dur = time.time() - t1
+            success = True
+            if test_result:
+                test_results(query, result)
+            if print_result:
+                print(result)
+        except Exception as e:
+            print("".join(traceback.TracebackException.from_exception(e).format()))
+            dur = 0.0
+            success = False
+        finally:
+            if log_time:
+                append_row("dask", query, dur, dask.__version__, success)
     print(f"Total query execution time (s): {time.time() - total_start}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Dask TPC-H benchmark.")
+    parser = argparse.ArgumentParser(description="TPC-H benchmark.")
     parser.add_argument(
         "--path", type=str, required=True, help="Path to the TPC-H dataset."
     )
@@ -1303,11 +1361,30 @@ def main():
         required=False,
         help="The endpoint of existing Dask cluster."
     )
+    parser.add_argument(
+        "--log_time",
+        action="store_true",
+        help="log time metrics or not.",
+    )
+    parser.add_argument(
+        "--include_io",
+        action="store_true",
+        help="include IO or not.",
+    )
+    parser.add_argument(
+        "--test_result",
+        action="store_true",
+        help="test results with official answers.",
+    )
+    parser.add_argument(
+        "--print_result",
+        action="store_true",
+        help="print result.",
+    )
     args = parser.parse_args()
 
     # path to TPC-H data in parquet.
-    path = args.path
-    print(f"Path: {path}")
+    print(f"Path: {args.path}")
 
     # credentials to access the datasource.
     storage_options = {}
@@ -1320,9 +1397,22 @@ def main():
     if args.queries is not None:
         queries = args.queries
     print(f"Queries to run: {queries}")
+    print(f"Include IO: {args.include_io}")
 
-    client = Client("127.0.0.1:8786")
-    run_queries(path, storage_options, client, queries)
+    if args.endpoint == "local" or args.endpoint is None:
+        from dask.distributed import LocalCluster
+        client = LocalCluster()
+    elif args.endpoint:
+        client = Client(args.endpoint)
+    
+    run_queries(args.path, 
+        storage_options, 
+        client, queries, 
+        args.log_time, 
+        args.include_io, 
+        args.test_result, 
+        args.print_result
+    )
 
 
 if __name__ == "__main__":
