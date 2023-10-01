@@ -1,15 +1,11 @@
-import argparse
-import json
 import os
+import json
 import time
+import argparse
 import traceback
 from typing import Dict
 
-import pandas
-
-import modin
-import ray
-import modin.pandas as pd
+import pandas as pd
 
 TIMINGS_FILE = "time.csv"
 dataset_dict = {}
@@ -160,13 +156,13 @@ def q01(root: str, storage_options: Dict):
     total = (
         total.sort_values(["L_RETURNFLAG", "L_LINESTATUS"])
                 .rename(columns={
-                        "L_QUANTITY": "SUM_QTY",
-                        "L_EXTENDEDPRICE": "SUM_BASE_PRICE",
-                        "DISC_PRICE": "SUM_DISC_PRICE",
-                        "CHARGE": "SUM_CHARGE",
-                        "L_DISCOUNT": "AVG_DISC",
-                        "L_ORDERKEY": "COUNT_ORDER"
-                    })
+                    "L_QUANTITY": "SUM_QTY",
+                    "L_EXTENDEDPRICE": "SUM_BASE_PRICE",
+                    "DISC_PRICE": "SUM_DISC_PRICE",
+                    "CHARGE": "SUM_CHARGE",
+                    "L_DISCOUNT": "AVG_DISC",
+                    "L_ORDERKEY": "COUNT_ORDER"
+                })
     )
 
     return total
@@ -321,9 +317,7 @@ def q03(root: str, storage_options: Dict):
     jn2 = jn1.merge(flineitem, left_on="O_ORDERKEY", right_on="L_ORDERKEY")
     jn2["REVENUE"] = jn2.L_EXTENDEDPRICE * (1 - jn2.L_DISCOUNT)
     total = (
-        jn2.groupby(["L_ORDERKEY", "O_ORDERDATE", "O_SHIPPRIORITY"], as_index=False)[
-            "REVENUE"
-        ]
+        jn2.groupby(["L_ORDERKEY", "O_ORDERDATE", "O_SHIPPRIORITY"], as_index=False)["REVENUE"]
         .sum()
         .sort_values(["REVENUE"], ascending=False)
     )
@@ -537,7 +531,7 @@ def q08(root: str, storage_options: Dict):
         supplier_filtered, left_on="L_SUPPKEY", right_on="S_SUPPKEY", how="inner"
     )
     total = total.loc[:, ["L_ORDERKEY", "VOLUME", "S_NATIONKEY"]]
-    orders_filtered = orders.loc[
+    orders_filtered = orders[
         (orders["O_ORDERDATE"] >= pd.Timestamp("1995-01-01"))
         & (orders["O_ORDERDATE"] < pd.Timestamp("1997-01-01"))
     ]
@@ -1281,7 +1275,7 @@ def run_queries(
             success = False
         finally:
             if log_time:
-                append_row("modin", query, dur, modin.__version__, success)
+                append_row("pandas", query, dur, pd.__version__, success)
     print(f"Total query execution time (s): {time.time() - total_start}")
 
 
@@ -1302,12 +1296,6 @@ def main():
         nargs="+",
         required=False,
         help="whitespace separated TPC-H queries to run.",
-    )
-    parser.add_argument(
-        "--endpoint",
-        type=str,
-        required=False,
-        help="the endpoint of existing Ray cluster.",
     )
     parser.add_argument(
         "--log_time",
@@ -1338,7 +1326,6 @@ def main():
         queries = args.queries
     print(f"Queries to run: {queries}")
 
-    ray.init(address="auto")
     run_queries(path, storage_options, queries, args.log_time, args.print_result)
 
 

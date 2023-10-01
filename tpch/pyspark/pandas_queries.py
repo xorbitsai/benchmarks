@@ -1,58 +1,205 @@
 import os
 import sys
 import argparse
-import json
 import time
 import traceback
 from typing import Dict, List, Optional, Set, Union
 
 import pandas as pd
 from pandas.core.frame import DataFrame as PandasDF
+
 import pyspark
 import pyspark.pandas as ps
 from pyspark.sql import SparkSession
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-sys.path.append(parent_dir)
-from common_utils import append_row, ANSWERS_BASE_DIR
 
+TIMINGS_FILE = "time.out"
 dataset_dict = {}
 spark: SparkSession = None
+
+
+def append_row(solution: str, q: str, secs: float, version: str, success=True):
+    with open(TIMINGS_FILE, "a") as f:
+        if f.tell() == 0:
+            f.write("solution,version,query_no,duration[s],success\n")
+        f.write(f"{solution},{version},{q},{secs},{success}\n")
+        print(f"{solution},{version},{q},{secs},{success}")
+
+
+def load_lineitem(root: str):
+    if "lineitem" not in dataset_dict:
+        data_path = root + "/lineitem"
+        df = spark.read.parquet(data_path)
+        df = ps.DataFrame(df)
+        dataset_dict["lineitem"] = df
+    else:
+        df = dataset_dict["lineitem"]
+    return df
+
+
+def load_part(root: str):
+    if "part" not in dataset_dict:
+        data_path = root + "/part"
+        df = spark.read.parquet(data_path).cache()
+        df = ps.DataFrame(df)
+        dataset_dict["part"] = df
+    else:
+        df = dataset_dict["part"]
+    return df
+
+
+def load_orders(root: str):
+    if "orders" not in dataset_dict:
+        data_path = root + "/orders"
+        df = spark.read.parquet(data_path).cache()
+        df = ps.DataFrame(df)
+        dataset_dict["orders"] = df
+    else:
+        df = dataset_dict["orders"]
+    return df
+
+
+def load_customer(root: str):
+    if "customer" not in dataset_dict:
+        data_path = root + "/customer"
+        df = spark.read.parquet(data_path).cache()
+        df = ps.DataFrame(df)
+        dataset_dict["customer"] = df
+    else:
+        df = dataset_dict["customer"]
+    return df
+
+
+def load_nation(root: str):
+    if "nation" not in dataset_dict:
+        data_path = root + "/nation"
+        df = spark.read.parquet(data_path).cache()
+        df = ps.DataFrame(df)
+        dataset_dict["nation"] = df
+    else:
+        df = dataset_dict["nation"]
+    return df
+
+
+def load_region(root: str):
+    if "region" not in dataset_dict:
+        data_path = root + "/region"
+        df = spark.read.parquet(data_path).cache()
+        df = ps.DataFrame(df)
+        dataset_dict["region"] = df
+    else:
+        df = dataset_dict["region"]
+    return df
+
+
+def load_supplier(root: str):
+    if "supplier" not in dataset_dict:
+        data_path = root + "/supplier"
+        df = spark.read.parquet(data_path).cache()
+        df = ps.DataFrame(df)
+        dataset_dict["supplier"] = df
+    else:
+        df = dataset_dict["supplier"]
+    return df
+
+
+def load_partsupp(root: str):
+    if "partsupp" not in dataset_dict:
+        data_path = root + "/partsupp"
+        df = spark.read.parquet(data_path).cache()
+        df = ps.DataFrame(df)
+        dataset_dict["partsupp"] = df
+    else:
+        df = dataset_dict["partsupp"]
+    return df
+
 
 def load_lineitem(root: str, include_io: bool = False):
     if "lineitem" not in dataset_dict or include_io:
         data_path = root + "/lineitem"
-        df = spark.read.parquet(data_path).cache()
+        df = spark.read.parquet(data_path).persist(StorageLevel.MEMORY_ONLY)
         df = ps.DataFrame(df)
-        result = df
-        dataset_dict["lineitem"] = result
+        dataset_dict["lineitem"] = df
     else:
-        result = dataset_dict["lineitem"]
-    return result
+        df = dataset_dict["lineitem"]
+    return df
 
 
-# def time_collector(func):
-#     def wrapped(*args, **kwargs):
-#         if not queries or func.__name__ in queries:
-#             global total_time
-#             start = time.time()
-#             r = func(*args, **kwargs)
-#             print(r)
-#             duration = time.time() - start
-#             total_time += duration
-#             print(f"{func.__name__} Execution time (s): {duration}")
-#         else:
-#             pass
-
-#     return wrapped
+def load_part(root: str, include_io: bool = False):
+    if "part" not in dataset_dict or include_io:
+        data_path = root + "/part"
+        df = spark.read.parquet(data_path).persist(StorageLevel.MEMORY_ONLY)
+        df = ps.DataFrame(df)
+        dataset_dict["part"] = df
+    else:
+        df = dataset_dict["part"]
+    return df
 
 
-# def load_data(data_folder: str, table_name: str) -> ps.DataFrame:
-#     df = spark.read.parquet(data_folder + "/" + table_name).cache()
-#     print(f"Table {table_name} in folder {data_folder} has {df.count()} rows.")
-#     df = ps.DataFrame(df)
-#     return df
+def load_orders(root: str, include_io: bool = False):
+    if "orders" not in dataset_dict or include_io:
+        data_path = root + "/orders"
+        df = spark.read.parquet(data_path).persist(StorageLevel.MEMORY_ONLY)
+        df = ps.DataFrame(df)
+        dataset_dict["orders"] = df
+    else:
+        df = dataset_dict["orders"]
+    return df
+
+
+def load_customer(root: str, include_io: bool = False):
+    if "customer" not in dataset_dict or include_io:
+        data_path = root + "/customer"
+        df = spark.read.parquet(data_path).persist(StorageLevel.MEMORY_ONLY)
+        df = ps.DataFrame(df)
+        dataset_dict["customer"] = df
+    else:
+        df = dataset_dict["customer"]
+    return df
+
+
+def load_nation(root: str, include_io: bool = False):
+    if "nation" not in dataset_dict or include_io:
+        data_path = root + "/nation"
+        df = spark.read.parquet(data_path).persist(StorageLevel.MEMORY_ONLY)
+        df = ps.DataFrame(df)
+        dataset_dict["nation"] = df
+    else:
+        df = dataset_dict["nation"]
+    return df
+
+
+def load_region(root: str, include_io: bool = False):
+    if "region" not in dataset_dict or include_io:
+        data_path = root + "/region"
+        df = spark.read.parquet(data_path).persist(StorageLevel.MEMORY_ONLY)
+        df = ps.DataFrame(df)
+        dataset_dict["region"] = df
+    else:
+        df = dataset_dict["region"]
+    return df
+
+
+def load_supplier(root: str, include_io: bool = False):
+    if "supplier" not in dataset_dict or include_io:
+        data_path = root + "/supplier"
+        df = spark.read.parquet(data_path).persist(StorageLevel.MEMORY_ONLY)
+        df = ps.DataFrame(df)
+        dataset_dict["supplier"] = df
+    else:
+        df = dataset_dict["supplier"]
+    return df
+
+
+def load_partsupp(root: str, include_io: bool = False):
+    if "partsupp" not in dataset_dict or include_io:
+        data_path = root + "/partsupp"
+        df = spark.read.parquet(data_path).persist(StorageLevel.MEMORY_ONLY)
+        df = ps.DataFrame(df)
+        dataset_dict["partsupp"] = df
+    else:
+        df = dataset_dict["partsupp"]
+    return df
 
 
 def q01(root: str, include_io: bool = False):
@@ -83,16 +230,7 @@ def q01(root: str, include_io: bool = False):
         * (1 - lineitem_filtered.L_DISCOUNT)
         * (1 + lineitem_filtered.L_TAX)
     )
-    total = lineitem_filtered.groupby(["L_RETURNFLAG", "L_LINESTATUS"], as_index=False)[
-        "L_ORDERKEY",
-        "L_QUANTITY",
-        "L_EXTENDEDPRICE",
-        "L_DISCOUNT",
-        "AVG_QTY",
-        "AVG_PRICE",
-        "CHARGE",
-        "DISC_PRICE",
-    ].agg(
+    total = lineitem_filtered.groupby(["L_RETURNFLAG", "L_LINESTATUS"]).agg(
         {
             "L_QUANTITY": "sum",
             "L_EXTENDEDPRICE": "sum",
@@ -104,116 +242,117 @@ def q01(root: str, include_io: bool = False):
             "L_ORDERKEY": "count",
         }
     )
+
+    total = total.reset_index().sort_values(["L_RETURNFLAG", "L_LINESTATUS"])
     return total
 
 
-# @time_collector
-# def q02(
-#     part: ps.DataFrame,
-#     partsupp: ps.DataFrame,
-#     supplier: ps.DataFrame,
-#     nation: ps.DataFrame,
-#     region: ps.DataFrame,
-# ):
-#     nation_filtered = nation.loc[:, ["N_NATIONKEY", "N_NAME", "N_REGIONKEY"]]
-#     region_filtered = region[(region["R_NAME"] == "EUROPE")]
-#     region_filtered = region_filtered.loc[:, ["R_REGIONKEY"]]
-#     r_n_merged = nation_filtered.merge(
-#         region_filtered, left_on="N_REGIONKEY", right_on="R_REGIONKEY", how="inner"
-#     )
-#     r_n_merged = r_n_merged.loc[:, ["N_NATIONKEY", "N_NAME"]]
-#     supplier_filtered = supplier.loc[
-#         :,
-#         [
-#             "S_SUPPKEY",
-#             "S_NAME",
-#             "S_ADDRESS",
-#             "S_NATIONKEY",
-#             "S_PHONE",
-#             "S_ACCTBAL",
-#             "S_COMMENT",
-#         ],
-#     ]
-#     s_r_n_merged = r_n_merged.merge(
-#         supplier_filtered, left_on="N_NATIONKEY", right_on="S_NATIONKEY", how="inner"
-#     )
-#     s_r_n_merged = s_r_n_merged.loc[
-#         :,
-#         [
-#             "N_NAME",
-#             "S_SUPPKEY",
-#             "S_NAME",
-#             "S_ADDRESS",
-#             "S_PHONE",
-#             "S_ACCTBAL",
-#             "S_COMMENT",
-#         ],
-#     ]
-#     partsupp_filtered = partsupp.loc[:, ["PS_PARTKEY", "PS_SUPPKEY", "PS_SUPPLYCOST"]]
-#     ps_s_r_n_merged = s_r_n_merged.merge(
-#         partsupp_filtered, left_on="S_SUPPKEY", right_on="PS_SUPPKEY", how="inner"
-#     )
-#     ps_s_r_n_merged = ps_s_r_n_merged.loc[
-#         :,
-#         [
-#             "N_NAME",
-#             "S_NAME",
-#             "S_ADDRESS",
-#             "S_PHONE",
-#             "S_ACCTBAL",
-#             "S_COMMENT",
-#             "PS_PARTKEY",
-#             "PS_SUPPLYCOST",
-#         ],
-#     ]
-#     part_filtered = part.loc[:, ["P_PARTKEY", "P_MFGR", "P_SIZE", "P_TYPE"]]
-#     part_filtered = part_filtered[
-#         (part_filtered["P_SIZE"] == 15) & (part_filtered["P_TYPE"].str.endswith("BRASS"))
-#     ]
-#     part_filtered = part_filtered.loc[:, ["P_PARTKEY", "P_MFGR"]]
-#     merged_df = part_filtered.merge(
-#         ps_s_r_n_merged, left_on="P_PARTKEY", right_on="PS_PARTKEY", how="inner"
-#     )
-#     merged_df = merged_df.loc[
-#         :,
-#         [
-#             "N_NAME",
-#             "S_NAME",
-#             "S_ADDRESS",
-#             "S_PHONE",
-#             "S_ACCTBAL",
-#             "S_COMMENT",
-#             "PS_SUPPLYCOST",
-#             "P_PARTKEY",
-#             "P_MFGR",
-#         ],
-#     ]
-#     min_values = merged_df.groupby("P_PARTKEY", as_index=False)["PS_SUPPLYCOST"].min()
-#     min_values.columns = ["P_PARTKEY_CPY", "MIN_SUPPLYCOST"]
-#     merged_df = merged_df.merge(
-#         min_values,
-#         left_on=["P_PARTKEY", "PS_SUPPLYCOST"],
-#         right_on=["P_PARTKEY_CPY", "MIN_SUPPLYCOST"],
-#         how="inner",
-#     )
-#     total = merged_df.loc[
-#         :,
-#         [
-#             "S_ACCTBAL",
-#             "S_NAME",
-#             "N_NAME",
-#             "P_PARTKEY",
-#             "P_MFGR",
-#             "S_ADDRESS",
-#             "S_PHONE",
-#             "S_COMMENT",
-#         ],
-#     ]
-#     total = total.sort_values(
-#         by=["S_ACCTBAL", "N_NAME", "S_NAME", "P_PARTKEY"],
-#         ascending=[False, True, True, True],
-#     )
-#     return total
+def q02(root: str, include_io: bool = False):
+    nation = load_nation(root, include_io)
+    region = load_region(root, include_io)
+    supplier = load_supplier(root, include_io)
+    part = load_part(root, include_io)
+    partsupp = load_partsupp(root, include_io)
+
+    nation_filtered = nation.loc[:, ["N_NATIONKEY", "N_NAME", "N_REGIONKEY"]]
+    region_filtered = region[(region["R_NAME"] == "EUROPE")]
+    region_filtered = region_filtered.loc[:, ["R_REGIONKEY"]]
+    r_n_merged = nation_filtered.merge(
+        region_filtered, left_on="N_REGIONKEY", right_on="R_REGIONKEY", how="inner"
+    )
+    r_n_merged = r_n_merged.loc[:, ["N_NATIONKEY", "N_NAME"]]
+    supplier_filtered = supplier.loc[
+        :,
+        [
+            "S_SUPPKEY",
+            "S_NAME",
+            "S_ADDRESS",
+            "S_NATIONKEY",
+            "S_PHONE",
+            "S_ACCTBAL",
+            "S_COMMENT",
+        ],
+    ]
+    s_r_n_merged = r_n_merged.merge(
+        supplier_filtered, left_on="N_NATIONKEY", right_on="S_NATIONKEY", how="inner"
+    )
+    s_r_n_merged = s_r_n_merged.loc[
+        :,
+        [
+            "N_NAME",
+            "S_SUPPKEY",
+            "S_NAME",
+            "S_ADDRESS",
+            "S_PHONE",
+            "S_ACCTBAL",
+            "S_COMMENT",
+        ],
+    ]
+    partsupp_filtered = partsupp.loc[:, ["PS_PARTKEY", "PS_SUPPKEY", "PS_SUPPLYCOST"]]
+    ps_s_r_n_merged = s_r_n_merged.merge(
+        partsupp_filtered, left_on="S_SUPPKEY", right_on="PS_SUPPKEY", how="inner"
+    )
+    ps_s_r_n_merged = ps_s_r_n_merged.loc[
+        :,
+        [
+            "N_NAME",
+            "S_NAME",
+            "S_ADDRESS",
+            "S_PHONE",
+            "S_ACCTBAL",
+            "S_COMMENT",
+            "PS_PARTKEY",
+            "PS_SUPPLYCOST",
+        ],
+    ]
+    part_filtered = part.loc[:, ["P_PARTKEY", "P_MFGR", "P_SIZE", "P_TYPE"]]
+    part_filtered = part_filtered[
+        (part_filtered["P_SIZE"] == 15) & (part_filtered["P_TYPE"].str.endswith("BRASS"))
+    ]
+    part_filtered = part_filtered.loc[:, ["P_PARTKEY", "P_MFGR"]]
+    merged_df = part_filtered.merge(
+        ps_s_r_n_merged, left_on="P_PARTKEY", right_on="PS_PARTKEY", how="inner"
+    )
+    merged_df = merged_df.loc[
+        :,
+        [
+            "N_NAME",
+            "S_NAME",
+            "S_ADDRESS",
+            "S_PHONE",
+            "S_ACCTBAL",
+            "S_COMMENT",
+            "PS_SUPPLYCOST",
+            "P_PARTKEY",
+            "P_MFGR",
+        ],
+    ]
+    min_values = merged_df.groupby("P_PARTKEY", as_index=False)["PS_SUPPLYCOST"].min()
+    min_values.columns = ["P_PARTKEY_CPY", "MIN_SUPPLYCOST"]
+    merged_df = merged_df.merge(
+        min_values,
+        left_on=["P_PARTKEY", "PS_SUPPLYCOST"],
+        right_on=["P_PARTKEY_CPY", "MIN_SUPPLYCOST"],
+        how="inner",
+    )
+    total = merged_df.loc[
+        :,
+        [
+            "S_ACCTBAL",
+            "S_NAME",
+            "N_NAME",
+            "P_PARTKEY",
+            "P_MFGR",
+            "S_ADDRESS",
+            "S_PHONE",
+            "S_COMMENT",
+        ],
+    ]
+    total = total.sort_values(
+        by=["S_ACCTBAL", "N_NAME", "S_NAME", "P_PARTKEY"],
+        ascending=[False, True, True, True],
+    )
+    return total
 
 
 # @time_collector
@@ -242,17 +381,19 @@ def q01(root: str, include_io: bool = False):
 #     return res.head(10)
 
 
-# @time_collector
-# def q04(lineitem: ps.DataFrame, orders: ps.DataFrame):
-#     date1 = pd.Timestamp("1993-11-01")
-#     date2 = pd.Timestamp("1993-08-01")
-#     lsel = lineitem.L_COMMITDATE < lineitem.L_RECEIPTDATE
-#     osel = (orders.O_ORDERDATE < date1) & (orders.O_ORDERDATE >= date2)
-#     flineitem = lineitem[lsel]
-#     forders = orders[osel]
-#     jn = forders[forders["O_ORDERKEY"].isin(flineitem["L_ORDERKEY"])]
-#     total = jn.groupby("O_ORDERPRIORITY", as_index=False)["O_ORDERKEY"].count()
-#     return total
+def q04(root: str, include_io: bool = False):
+    lineitem = load_lineitem(root, include_io)
+    orders = load_orders(root, include_io)
+
+    date1 = pd.Timestamp("1993-10-01")
+    date2 = pd.Timestamp("1993-07-01")
+    lsel = lineitem.L_COMMITDATE < lineitem.L_RECEIPTDATE
+    osel = (orders.O_ORDERDATE < date1) & (orders.O_ORDERDATE >= date2)
+    flineitem = lineitem[lsel]
+    forders = orders[osel]
+    jn = forders[forders["O_ORDERKEY"].isin(flineitem["L_ORDERKEY"])]
+    total = jn.groupby("O_ORDERPRIORITY", as_index=False)["O_ORDERKEY"].count()
+    return total
 
 
 # @time_collector
@@ -860,7 +1001,7 @@ query_to_loaders = {
     1: [load_lineitem],
     # 2: [load_part, load_partsupp, load_supplier, load_nation, load_region],
     # 3: [load_lineitem, load_orders, load_customer],
-    # 4: [load_lineitem, load_orders],
+    4: [load_lineitem, load_orders],
     # 5: [
     #     load_lineitem,
     #     load_orders,
@@ -907,7 +1048,7 @@ query_to_runner = {
     1: q01,
     # 2: q02,
     # 3: q03,
-    # 4: q04,
+    4: q04,
     # 5: q05,
     # 6: q06,
     # 7: q07,
@@ -976,10 +1117,7 @@ def run_queries(
     for query in queries:
         loaders = query_to_loaders[query]
         for loader in loaders:
-            loader(
-                path,
-                include_io,
-            )
+            loader(path, include_io=False)
     print(f"Data loading time (s): {time.time() - total_start}")
     total_start = time.time()
     for query in queries:
@@ -989,13 +1127,12 @@ def run_queries(
                 path,
                 include_io,
             )
-            result = result.execute()
+            if print_result:
+                print(result)
             dur = time.time() - t1
             success = True
             if test_result:
                 test_results(query, result)
-            if print_result:
-                print(result)
         except Exception as e:
             print("".join(traceback.TracebackException.from_exception(e).format()))
             dur = 0.0
@@ -1019,7 +1156,7 @@ def main():
         required=False,
         help="whitespace separated TPC-H queries to run.",
     )
-    parser.add_argument("--master", type=str, help="Spark master ip address")
+    parser.add_argument("--master", type=str, help="Spark master URI")
 
     # aws settings
     parser.add_argument("--account", type=str, help="AWS access id")
@@ -1066,7 +1203,9 @@ def main():
     spark = SparkSession\
         .builder\
         .appName("PySpark tpch query")\
+        .master(args.master) \
         .getOrCreate()
+    spark.sparkContext.setLogLevel("ERROR")
 
     # spark = (
     #     SparkSession.builder.appName("PySpark tpch query")
@@ -1084,7 +1223,6 @@ def main():
         conf.set("fs.s3a.access.key", account)
         conf.set("fs.s3a.secret.key", key)
         conf.set("fs.s3a.endpoint", args.endpoint)
-        spark.sparkContext.setLogLevel("DEBUG")
 
         path = path.replace("s3://", "s3a://")
     

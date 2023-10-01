@@ -702,7 +702,7 @@ def main():
         "--endpoint",
         type=str,
         required=False,
-        help="the endpoint of existing Xorbits cluster.",
+        help="the endpoint of existing Ray cluster.",
     )
     parser.add_argument(
         "--log_time",

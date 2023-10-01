@@ -1,37 +1,39 @@
 import os
-import sys
-import argparse
 import json
 import time
+import argparse
 import traceback
 from datetime import datetime
 from typing import Dict
 
-import pandas
-from pandas.core.frame import DataFrame as PandasDF
+import pandas as pd
 
 import dask
-import dask.dataframe as pd
+import dask.dataframe as dd
 from dask.distributed import Client, wait
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-sys.path.append(parent_dir)
-from common_utils import append_row, ANSWERS_BASE_DIR
-
+TIMINGS_FILE = "time.out"
 dataset_dict = {}
 
 
-def load_lineitem(root: str, storage_options: Dict, include_io: bool = False):
-    if "lineitem" not in dataset_dict or include_io:
+def append_row(solution: str, q: str, secs: float, version: str, success=True):
+    with open(TIMINGS_FILE, "a") as f:
+        if f.tell() == 0:
+            f.write("solution,version,query_no,duration[s],success\n")
+        f.write(f"{solution},{version},{q},{secs},{success}\n")
+        print(f"{solution},{version},{q},{secs},{success}")
+
+
+def load_lineitem(root: str, storage_options: Dict):
+    if "lineitem" not in dataset_dict:
         data_path = root + "/lineitem"
-        df = pd.read_parquet(
+        df = dd.read_parquet(
             data_path,
             storage_options=storage_options,
         )
-        df.L_SHIPDATE = pd.to_datetime(df.L_SHIPDATE, format="%Y-%m-%d")
-        df.L_RECEIPTDATE = pd.to_datetime(df.L_RECEIPTDATE, format="%Y-%m-%d")
-        df.L_COMMITDATE = pd.to_datetime(df.L_COMMITDATE, format="%Y-%m-%d")
+        df.L_SHIPDATE = dd.to_datetime(df.L_SHIPDATE, format="%Y-%m-%d")
+        df.L_RECEIPTDATE = dd.to_datetime(df.L_RECEIPTDATE, format="%Y-%m-%d")
+        df.L_COMMITDATE = dd.to_datetime(df.L_COMMITDATE, format="%Y-%m-%d")
         dataset_dict["lineitem"] = df
         result = df
     else:
@@ -39,10 +41,10 @@ def load_lineitem(root: str, storage_options: Dict, include_io: bool = False):
     return result
 
 
-def load_part(root: str, storage_options: Dict, include_io: bool = False):
+def load_part(root: str, storage_options: Dict):
     if "part" not in dataset_dict or include_io:
         data_path = root + "/part"
-        df = pd.read_parquet(
+        df = dd.read_parquet(
             data_path,
             storage_options=storage_options,
         )
@@ -53,14 +55,14 @@ def load_part(root: str, storage_options: Dict, include_io: bool = False):
     return result
 
 
-def load_orders(root: str, storage_options: Dict, include_io: bool = False):
+def load_orders(root: str, storage_options: Dict):
     if "orders" not in dataset_dict or include_io:
         data_path = root + "/orders"
-        df = pd.read_parquet(
+        df = dd.read_parquet(
             data_path,
             storage_options=storage_options,
         )
-        df.O_ORDERDATE = pd.to_datetime(df.O_ORDERDATE, format="%Y-%m-%d")
+        df.O_ORDERDATE = dd.to_datetime(df.O_ORDERDATE, format="%Y-%m-%d")
         dataset_dict["orders"] = df
         result = df
     else:
@@ -68,10 +70,10 @@ def load_orders(root: str, storage_options: Dict, include_io: bool = False):
     return result
 
 
-def load_customer(root: str, storage_options: Dict, include_io: bool = False):
+def load_customer(root: str, storage_options: Dict):
     if "customer" not in dataset_dict or include_io:
         data_path = root + "/customer"
-        df = pd.read_parquet(
+        df = dd.read_parquet(
             data_path,
             storage_options=storage_options,
         )
@@ -82,10 +84,10 @@ def load_customer(root: str, storage_options: Dict, include_io: bool = False):
     return result
 
 
-def load_nation(root: str, storage_options: Dict, include_io: bool = False):
+def load_nation(root: str, storage_options: Dict):
     if "nation" not in dataset_dict or include_io:
         data_path = root + "/nation"
-        df = pd.read_parquet(
+        df = dd.read_parquet(
             data_path,
             storage_options=storage_options,
         )
@@ -96,10 +98,10 @@ def load_nation(root: str, storage_options: Dict, include_io: bool = False):
     return result
 
 
-def load_region(root: str, storage_options: Dict, include_io: bool = False):
+def load_region(root: str, storage_options: Dict):
     if "region" not in dataset_dict or include_io:
         data_path = root + "/region"
-        df = pd.read_parquet(
+        df = dd.read_parquet(
             data_path,
             storage_options=storage_options,
         )
@@ -110,10 +112,10 @@ def load_region(root: str, storage_options: Dict, include_io: bool = False):
     return result
 
 
-def load_supplier(root: str, storage_options: Dict, include_io: bool = False):
+def load_supplier(root: str, storage_options: Dict):
     if "supplier" not in dataset_dict or include_io:
         data_path = root + "/supplier"
-        df = pd.read_parquet(
+        df = dd.read_parquet(
             data_path,
             storage_options=storage_options,
         )
@@ -124,10 +126,10 @@ def load_supplier(root: str, storage_options: Dict, include_io: bool = False):
     return result
 
 
-def load_partsupp(root: str, storage_options: Dict, include_io: bool = False):
+def load_partsupp(root: str, storage_options: Dict):
     if "partsupp" not in dataset_dict or include_io:
         data_path = root + "/partsupp"
-        df = pd.read_parquet(
+        df = dd.read_parquet(
             data_path,
             storage_options=storage_options,
         )
@@ -138,8 +140,8 @@ def load_partsupp(root: str, storage_options: Dict, include_io: bool = False):
     return result
 
 
-def q01(root: str, storage_options: Dict, include_io: bool = False):
-    lineitem = load_lineitem(root, storage_options, include_io)
+def q01(root: str, storage_options: Dict):
+    lineitem = load_lineitem(root, storage_options)
 
     date = datetime.strptime("1998-09-02", "%Y-%m-%d")
     lineitem_filtered = lineitem.loc[
@@ -186,12 +188,12 @@ def q01(root: str, storage_options: Dict, include_io: bool = False):
     return total
 
 
-def q02(root: str, storage_options: Dict, include_io: bool = False):
-    part = load_part(root, storage_options, include_io)
-    partsupp = load_partsupp(root, storage_options, include_io)
-    supplier = load_supplier(root, storage_options, include_io)
-    nation = load_nation(root, storage_options, include_io)
-    region = load_region(root, storage_options, include_io)
+def q02(root: str, storage_options: Dict):
+    part = load_part(root, storage_options)
+    partsupp = load_partsupp(root, storage_options)
+    supplier = load_supplier(root, storage_options)
+    nation = load_nation(root, storage_options)
+    region = load_region(root, storage_options)
 
     nation_filtered = nation.loc[:, ["N_NATIONKEY", "N_NAME", "N_REGIONKEY"]]
     region_filtered = region[(region["R_NAME"] == "EUROPE")]
@@ -311,10 +313,10 @@ def q02(root: str, storage_options: Dict, include_io: bool = False):
     return total
 
 
-def q03(root: str, storage_options: Dict, include_io: bool = False):
-    lineitem = load_lineitem(root, storage_options, include_io)
-    orders = load_orders(root, storage_options, include_io)
-    customer = load_customer(root, storage_options, include_io)
+def q03(root: str, storage_options: Dict):
+    lineitem = load_lineitem(root, storage_options)
+    orders = load_orders(root, storage_options)
+    customer = load_customer(root, storage_options)
 
     date = datetime.strptime("1995-03-04", "%Y-%m-%d")
     lineitem_filtered = lineitem.loc[
@@ -346,9 +348,9 @@ def q03(root: str, storage_options: Dict, include_io: bool = False):
     return res
 
 
-def q04(root: str, storage_options: Dict, include_io: bool = False):
-    lineitem = load_lineitem(root, storage_options, include_io)
-    orders = load_orders(root, storage_options, include_io)
+def q04(root: str, storage_options: Dict):
+    lineitem = load_lineitem(root, storage_options)
+    orders = load_orders(root, storage_options)
 
     date1 = datetime.strptime("1993-11-01", "%Y-%m-%d")
     date2 = datetime.strptime("1993-08-01", "%Y-%m-%d")
@@ -370,13 +372,13 @@ def q04(root: str, storage_options: Dict, include_io: bool = False):
     return total
 
 
-def q05(root: str, storage_options: Dict, include_io: bool = False):
-    lineitem = load_lineitem(root, storage_options, include_io)
-    orders = load_orders(root, storage_options, include_io)
-    customer = load_customer(root, storage_options, include_io)
-    supplier = load_supplier(root, storage_options, include_io)
-    nation = load_nation(root, storage_options, include_io)
-    region = load_region(root, storage_options, include_io)
+def q05(root: str, storage_options: Dict):
+    lineitem = load_lineitem(root, storage_options)
+    orders = load_orders(root, storage_options)
+    customer = load_customer(root, storage_options)
+    supplier = load_supplier(root, storage_options)
+    nation = load_nation(root, storage_options)
+    region = load_region(root, storage_options)
 
     date1 = datetime.strptime("1996-01-01", "%Y-%m-%d")
     date2 = datetime.strptime("1997-01-01", "%Y-%m-%d")
@@ -401,8 +403,8 @@ def q05(root: str, storage_options: Dict, include_io: bool = False):
     return total
 
 
-def q06(root: str, storage_options: Dict, include_io: bool = False):
-    lineitem = load_lineitem(root, storage_options, include_io)
+def q06(root: str, storage_options: Dict):
+    lineitem = load_lineitem(root, storage_options)
 
     date1 = datetime.strptime("1996-01-01", "%Y-%m-%d")
     date2 = datetime.strptime("1997-01-01", "%Y-%m-%d")
@@ -423,12 +425,12 @@ def q06(root: str, storage_options: Dict, include_io: bool = False):
     return total
 
 
-def q07(root: str, storage_options: Dict, include_io: bool = False):
-    lineitem = load_lineitem(root, storage_options, include_io)
-    orders = load_orders(root, storage_options, include_io)
-    customer = load_customer(root, storage_options, include_io)
-    supplier = load_supplier(root, storage_options, include_io)
-    nation = load_nation(root, storage_options, include_io)
+def q07(root: str, storage_options: Dict):
+    lineitem = load_lineitem(root, storage_options)
+    orders = load_orders(root, storage_options)
+    customer = load_customer(root, storage_options)
+    supplier = load_supplier(root, storage_options)
+    nation = load_nation(root, storage_options)
 
     lineitem_filtered = lineitem[
         (lineitem["L_SHIPDATE"] >= datetime.strptime("1995-01-01", "%Y-%m-%d"))
@@ -506,7 +508,7 @@ def q07(root: str, storage_options: Dict, include_io: bool = False):
     total2 = total2.drop(columns=["O_ORDERKEY", "L_ORDERKEY"])
 
     # concat results
-    total = pd.concat([total1, total2])
+    total = dd.concat([total1, total2])
     total = total.groupby(["SUPP_NATION", "CUST_NATION", "L_YEAR"]).VOLUME.agg("sum")
     total.columns = ["SUPP_NATION", "CUST_NATION", "L_YEAR", "REVENUE"]
 
@@ -525,14 +527,14 @@ def q07(root: str, storage_options: Dict, include_io: bool = False):
     return total
 
 
-def q08(root: str, storage_options: Dict, include_io: bool = False):
-    part = load_part(root, storage_options, include_io)
-    lineitem = load_lineitem(root, storage_options, include_io)
-    orders = load_orders(root, storage_options, include_io)
-    customer = load_customer(root, storage_options, include_io)
-    supplier = load_supplier(root, storage_options, include_io)
-    nation = load_nation(root, storage_options, include_io)
-    region = load_region(root, storage_options, include_io)
+def q08(root: str, storage_options: Dict):
+    part = load_part(root, storage_options)
+    lineitem = load_lineitem(root, storage_options)
+    orders = load_orders(root, storage_options)
+    customer = load_customer(root, storage_options)
+    supplier = load_supplier(root, storage_options)
+    nation = load_nation(root, storage_options)
+    region = load_region(root, storage_options)
 
     part_filtered = part[(part["P_TYPE"] == "ECONOMY ANODIZED STEEL")]
     part_filtered = part_filtered.loc[:, ["P_PARTKEY"]]
@@ -606,13 +608,13 @@ def q08(root: str, storage_options: Dict, include_io: bool = False):
     return total
 
 
-def q09(root: str, storage_options: Dict, include_io: bool = False):
-    part = load_part(root, storage_options, include_io)
-    partsupp = load_partsupp(root, storage_options, include_io)
-    lineitem = load_lineitem(root, storage_options, include_io)
-    orders = load_orders(root, storage_options, include_io)
-    supplier = load_supplier(root, storage_options, include_io)
-    nation = load_nation(root, storage_options, include_io)
+def q09(root: str, storage_options: Dict):
+    part = load_part(root, storage_options)
+    partsupp = load_partsupp(root, storage_options)
+    lineitem = load_lineitem(root, storage_options)
+    orders = load_orders(root, storage_options)
+    supplier = load_supplier(root, storage_options)
+    nation = load_nation(root, storage_options)
 
     psel = part.P_NAME.str.contains("ghost")
     fpart = part[psel]
@@ -636,11 +638,11 @@ def q09(root: str, storage_options: Dict, include_io: bool = False):
     return total
 
 
-def q10(root: str, storage_options: Dict, include_io: bool = False):
-    lineitem = load_lineitem(root, storage_options, include_io)
-    orders = load_orders(root, storage_options, include_io)
-    nation = load_nation(root, storage_options, include_io)
-    customer = load_customer(root, storage_options, include_io)
+def q10(root: str, storage_options: Dict):
+    lineitem = load_lineitem(root, storage_options)
+    orders = load_orders(root, storage_options)
+    nation = load_nation(root, storage_options)
+    customer = load_customer(root, storage_options)
 
     t1 = time.time()
     date1 = datetime.strptime("1994-11-01", "%Y-%m-%d")
@@ -670,10 +672,10 @@ def q10(root: str, storage_options: Dict, include_io: bool = False):
     return total
 
 
-def q11(root: str, storage_options: Dict, include_io: bool = False):
-    partsupp = load_partsupp(root, storage_options, include_io)
-    supplier = load_supplier(root, storage_options, include_io)
-    nation = load_nation(root, storage_options, include_io)
+def q11(root: str, storage_options: Dict):
+    partsupp = load_partsupp(root, storage_options)
+    supplier = load_supplier(root, storage_options)
+    nation = load_nation(root, storage_options)
 
     partsupp_filtered = partsupp.loc[:, ["PS_PARTKEY", "PS_SUPPKEY"]]
     partsupp_filtered["TOTAL_COST"] = (
@@ -700,9 +702,9 @@ def q11(root: str, storage_options: Dict, include_io: bool = False):
     return total
 
 
-def q12(root: str, storage_options: Dict, include_io: bool = False):
-    lineitem = load_lineitem(root, storage_options, include_io)
-    orders = load_orders(root, storage_options, include_io)
+def q12(root: str, storage_options: Dict):
+    lineitem = load_lineitem(root, storage_options)
+    orders = load_orders(root, storage_options)
 
     date1 = datetime.strptime("1994-01-01", "%Y-%m-%d")
     date2 = datetime.strptime("1995-01-01", "%Y-%m-%d")
@@ -725,17 +727,17 @@ def q12(root: str, storage_options: Dict, include_io: bool = False):
     def g2(x):
         return x.apply(lambda s: ((s != "1-URGENT") & (s != "2-HIGH")).sum())
 
-    g1_agg = pd.Aggregation("g1", g1, lambda s0: s0.sum())
-    g2_agg = pd.Aggregation("g2", g2, lambda s0: s0.sum())
+    g1_agg = dd.Aggregation("g1", g1, lambda s0: s0.sum())
+    g2_agg = dd.Aggregation("g2", g2, lambda s0: s0.sum())
     total = gb.agg([g1_agg, g2_agg])
     total = total.compute().reset_index().sort_values("L_SHIPMODE")
 
     return total
 
 
-def q13(root: str, storage_options: Dict, include_io: bool = False):
-    customer = load_customer(root, storage_options, include_io)
-    orders = load_orders(root, storage_options, include_io)
+def q13(root: str, storage_options: Dict):
+    customer = load_customer(root, storage_options)
+    orders = load_orders(root, storage_options)
 
     customer_filtered = customer.loc[:, ["C_CUSTKEY"]]
     orders_filtered = orders[
@@ -763,9 +765,9 @@ def q13(root: str, storage_options: Dict, include_io: bool = False):
     return total
 
 
-def q14(root: str, storage_options: Dict, include_io: bool = False):
-    lineitem = load_lineitem(root, storage_options, include_io)
-    part = load_part(root, storage_options, include_io)
+def q14(root: str, storage_options: Dict):
+    lineitem = load_lineitem(root, storage_options)
+    part = load_part(root, storage_options)
 
     startDate = datetime.strptime("1994-03-01", "%Y-%m-%d")
     endDate = datetime.strptime("1994-04-01", "%Y-%m-%d")
@@ -784,9 +786,9 @@ def q14(root: str, storage_options: Dict, include_io: bool = False):
 
     return total
 
-def q15(root: str, storage_options: Dict, include_io: bool = False):
-    lineitem = load_lineitem(root, storage_options, include_io)
-    supplier = load_supplier(root, storage_options, include_io)
+def q15(root: str, storage_options: Dict):
+    lineitem = load_lineitem(root, storage_options)
+    supplier = load_supplier(root, storage_options)
 
     lineitem_filtered = lineitem[
         (lineitem["L_SHIPDATE"] >= datetime.strptime("1996-01-01", "%Y-%m-%d"))
@@ -815,10 +817,10 @@ def q15(root: str, storage_options: Dict, include_io: bool = False):
     return total
 
 
-def q16(root: str, storage_options: Dict, include_io: bool = False):
-    part = load_part(root, storage_options, include_io)
-    partsupp = load_partsupp(root, storage_options, include_io)
-    supplier = load_supplier(root, storage_options, include_io)
+def q16(root: str, storage_options: Dict):
+    part = load_part(root, storage_options)
+    partsupp = load_partsupp(root, storage_options)
+    supplier = load_supplier(root, storage_options)
 
     part_filtered = part[
         (part["P_BRAND"] != "Brand#45")
@@ -855,9 +857,9 @@ def q16(root: str, storage_options: Dict, include_io: bool = False):
     return total
 
 
-def q17(root: str, storage_options: Dict, include_io: bool = False):
-    lineitem = load_lineitem(root, storage_options, include_io)
-    part = load_part(root, storage_options, include_io)
+def q17(root: str, storage_options: Dict):
+    lineitem = load_lineitem(root, storage_options)
+    part = load_part(root, storage_options)
 
     left = lineitem.loc[:, ["L_PARTKEY", "L_QUANTITY", "L_EXTENDEDPRICE"]]
     right = part[((part["P_BRAND"] == "Brand#23") & (part["P_CONTAINER"] == "MED BOX"))]
@@ -888,10 +890,10 @@ def q17(root: str, storage_options: Dict, include_io: bool = False):
     return total
 
 
-def q18(root: str, storage_options: Dict, include_io: bool = False):
-    lineitem = load_lineitem(root, storage_options, include_io)
-    orders = load_orders(root, storage_options, include_io)
-    customer = load_customer(root, storage_options, include_io)
+def q18(root: str, storage_options: Dict):
+    lineitem = load_lineitem(root, storage_options)
+    orders = load_orders(root, storage_options)
+    customer = load_customer(root, storage_options)
 
     gb1 = lineitem.groupby("L_ORDERKEY")["L_QUANTITY"].sum().reset_index()
     fgb1 = gb1[gb1.L_QUANTITY > 300]
@@ -910,9 +912,9 @@ def q18(root: str, storage_options: Dict, include_io: bool = False):
     return total
 
 
-def q19(root: str, storage_options: Dict, include_io: bool = False):
-    lineitem = load_lineitem(root, storage_options, include_io)
-    part = load_part(root, storage_options, include_io)
+def q19(root: str, storage_options: Dict):
+    lineitem = load_lineitem(root, storage_options)
+    part = load_part(root, storage_options)
 
     t1 = time.time()
     Brand31 = "Brand#31"
@@ -1020,12 +1022,12 @@ def q19(root: str, storage_options: Dict, include_io: bool = False):
     return total
 
 
-def q20(root: str, storage_options: Dict, include_io: bool = False):
-    lineitem = load_lineitem(root, storage_options, include_io)
-    part = load_part(root, storage_options, include_io)
-    nation = load_nation(root, storage_options, include_io)
-    partsupp = load_partsupp(root, storage_options, include_io)
-    supplier = load_supplier(root, storage_options, include_io)
+def q20(root: str, storage_options: Dict):
+    lineitem = load_lineitem(root, storage_options)
+    part = load_part(root, storage_options)
+    nation = load_nation(root, storage_options)
+    partsupp = load_partsupp(root, storage_options)
+    supplier = load_supplier(root, storage_options)
 
     date1 = datetime.strptime("1996-01-01", "%Y-%m-%d")
     date2 = datetime.strptime("1997-01-01", "%Y-%m-%d")
@@ -1056,11 +1058,11 @@ def q20(root: str, storage_options: Dict, include_io: bool = False):
     return total
 
 
-def q21(root: str, storage_options: Dict, include_io: bool = False):
-    lineitem = load_lineitem(root, storage_options, include_io)
-    orders = load_orders(root, storage_options, include_io)
-    supplier = load_supplier(root, storage_options, include_io)
-    nation = load_nation(root, storage_options, include_io)
+def q21(root: str, storage_options: Dict):
+    lineitem = load_lineitem(root, storage_options)
+    orders = load_orders(root, storage_options)
+    supplier = load_supplier(root, storage_options)
+    nation = load_nation(root, storage_options)
 
     t1 = time.time()
     lineitem_filtered = lineitem.loc[
@@ -1137,9 +1139,9 @@ def q21(root: str, storage_options: Dict, include_io: bool = False):
     return total
 
 
-def q22(root: str, storage_options: Dict, include_io: bool = False):
-    customer = load_customer(root, storage_options, include_io)
-    orders = load_orders(root, storage_options, include_io)
+def q22(root: str, storage_options: Dict):
+    customer = load_customer(root, storage_options)
+    orders = load_orders(root, storage_options)
 
     customer_filtered = customer.loc[:, ["C_ACCTBAL", "C_CUSTKEY"]]
     customer_filtered["CNTRYCODE"] = customer["C_PHONE"].str.slice(0, 2)
@@ -1302,7 +1304,7 @@ def run_queries(path,
     for query in queries:
         loaders = query_to_loaders[query]
         for loader in loaders:
-            loader(path, storage_options, include_io)
+            loader(path, storage_options=storage_options=False)
     print(f"Data loading time (s): {time.time() - total_start}")
 
     total_start = time.time()
@@ -1320,7 +1322,7 @@ def run_queries(path,
     for query in queries:
         try:
             t1 = time.time()
-            result = query_to_runner[query](path, storage_options, include_io)
+            result = query_to_runner[query](path, storage_options)
             dur = time.time() - t1
             success = True
             if test_result:
