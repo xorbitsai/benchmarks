@@ -574,6 +574,7 @@ def run_queries(
         try:
             start_time = time.time()
             result = query_to_runner[query](path)
+            result = result.to_pandas()
             without_io_time = time.time() - start_time
             success = True
             if print_result:
@@ -585,7 +586,7 @@ def run_queries(
         finally:
             pass
         if log_time:
-            log_time_fn("pandas", query, version=version, without_io_time=without_io_time, success=success)
+            log_time_fn("daft", query, version=version, without_io_time=without_io_time, success=success)
     print(f"Total query execution time (s): {time.time() - total_start}")
 
 
@@ -594,7 +595,6 @@ def main():
     # aws settings
     parser.add_argument("--account", type=str, help="AWS access id")
     parser.add_argument("--key", type=str, help="AWS secret access key")
-    parser.add_argument("--endpoint", type=str, help="AWS region endpoint related to your S3")
     parser.add_argument(
         "--endpoint",
         type=str,
