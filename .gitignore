@@ -5,6 +5,7 @@ __pycache__/
 
 results/
 *-results/
+results0*/
 *.log
 *.csv
 # C extensions
