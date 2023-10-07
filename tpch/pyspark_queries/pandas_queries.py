@@ -321,7 +321,6 @@ def q04(root: str):
 
     date2 = pd.Timestamp("1993-8-01")
     date1 = date2 + pd.DateOffset(months=3)
-    date2 = pd.Timestamp("1993-08-01")
     lsel = lineitem.L_COMMITDATE < lineitem.L_RECEIPTDATE
     osel = (orders.O_ORDERDATE < date1) & (orders.O_ORDERDATE >= date2)
     flineitem = lineitem[lsel]

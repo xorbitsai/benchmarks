@@ -33,7 +33,8 @@ def log_time_fn(
 
 
 def print_result_fn(solution: str, result: pd.DataFrame, query: str):
-    result_prefix = f"./results-{solution}"
+    cwd = os.getcwd()
+    result_prefix = f"{cwd}/results-{solution}"
     if not os.path.exists(result_prefix):
         os.makedirs(result_prefix)
     result_path = f"{result_prefix}/{query}.out"
