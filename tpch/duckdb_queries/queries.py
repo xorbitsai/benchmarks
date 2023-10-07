@@ -1,27 +1,30 @@
 import os
-import sys
-import argparse
 import time
+import argparse
 import traceback
-from typing import Dict, List, Optional, Set, Union
 
-import pyspark
-from pyspark.sql import SparkSession
+import pandas as pd
+pd.set_option('display.max_columns', None)
 
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-sys.path.append(parent_dir)
-from common_utils import append_row, ANSWERS_BASE_DIR
+import duckdb
+from duckdb import DuckDBPyRelation
+
+from common_utils import log_time_fn, parse_common_arguments, print_result_fn
 
 dataset_dict = {}
-spark: SparkSession = None
+
+
+def create_table(path: str, talbe_name: str):
+    duckdb.sql(
+        f"create temp table if not exists {talbe_name} as select * from read_parquet('{path}/*.parquet');"
+    )
+    return talbe_name
 
 
 def load_lineitem(root: str):
     if "lineitem" not in dataset_dict:
         data_path = root + "/lineitem"
-        df = spark.read.parquet(data_path)
-        df.createOrReplaceTempView("lineitem")
+        df = create_table(data_path, "LINEITEM")
         dataset_dict["lineitem"] = df
     else:
         df = dataset_dict["lineitem"]
@@ -31,8 +34,7 @@ def load_lineitem(root: str):
 def load_part(root: str):
     if "part" not in dataset_dict:
         data_path = root + "/part"
-        df = spark.read.parquet(data_path).cache()
-        df.createOrReplaceTempView("part")
+        df = create_table(data_path, "PART")
         dataset_dict["part"] = df
     else:
         df = dataset_dict["part"]
@@ -42,8 +44,7 @@ def load_part(root: str):
 def load_orders(root: str):
     if "orders" not in dataset_dict:
         data_path = root + "/orders"
-        df = spark.read.parquet(data_path).cache()
-        df.createOrReplaceTempView("orders")
+        df = create_table(data_path, "ORDERS")
         dataset_dict["orders"] = df
     else:
         df = dataset_dict["orders"]
@@ -53,8 +54,7 @@ def load_orders(root: str):
 def load_customer(root: str):
     if "customer" not in dataset_dict:
         data_path = root + "/customer"
-        df = spark.read.parquet(data_path).cache()
-        df.createOrReplaceTempView("customer")
+        df = create_table(data_path, "CUSTOMER")
         dataset_dict["customer"] = df
     else:
         df = dataset_dict["customer"]
@@ -64,8 +64,7 @@ def load_customer(root: str):
 def load_nation(root: str):
     if "nation" not in dataset_dict:
         data_path = root + "/nation"
-        df = spark.read.parquet(data_path).cache()
-        df.createOrReplaceTempView("nation")
+        df = create_table(data_path, "NATION")
         dataset_dict["nation"] = df
     else:
         df = dataset_dict["nation"]
@@ -75,8 +74,7 @@ def load_nation(root: str):
 def load_region(root: str):
     if "region" not in dataset_dict:
         data_path = root + "/region"
-        df = spark.read.parquet(data_path).cache()
-        df.createOrReplaceTempView("region")
+        df = create_table(data_path, "REGION")
         dataset_dict["region"] = df
     else:
         df = dataset_dict["region"]
@@ -86,8 +84,7 @@ def load_region(root: str):
 def load_supplier(root: str):
     if "supplier" not in dataset_dict:
         data_path = root + "/supplier"
-        df = spark.read.parquet(data_path).cache()
-        df.createOrReplaceTempView("supplier")
+        df = create_table(data_path, "SUPPLIER")
         dataset_dict["supplier"] = df
     else:
         df = dataset_dict["supplier"]
@@ -97,8 +94,7 @@ def load_supplier(root: str):
 def load_partsupp(root: str):
     if "partsupp" not in dataset_dict:
         data_path = root + "/partsupp"
-        df = spark.read.parquet(data_path).cache()
-        df.createOrReplaceTempView("partsupp")
+        df = create_table(data_path, "PARTSUPP")
         dataset_dict["partsupp"] = df
     else:
         df = dataset_dict["partsupp"]
@@ -107,9 +103,8 @@ def load_partsupp(root: str):
 
 def q01(root: str):
     lineitem = load_lineitem(root)
-    # lineitem = lineitem.createOrReplaceTempView("lineitem")
 
-    total = spark.sql(
+    total = duckdb.sql(
         """SELECT
                 L_RETURNFLAG,
                 L_LINESTATUS,
@@ -145,7 +140,7 @@ def q02(root: str):
     SIZE = 15
     TYPE = "BRASS"
     REGION = "EUROPE"
-    total = spark.sql(
+    total = duckdb.sql(
         f"""SELECT
                 S_ACCTBAL,
                 S_NAME,
@@ -186,8 +181,7 @@ def q02(root: str):
                 S_ACCTBAL DESC,
                 N_NAME,
                 S_NAME,
-                P_PARTKEY
-            LIMIT 100"""
+                P_PARTKEY"""
     )
 
     return total
@@ -200,7 +194,7 @@ def q03(root: str):
 
     MKTSEGMENT = "HOUSEHOLD"
     DATE = "1995-03-04"
-    total = spark.sql(
+    total = duckdb.sql(
         f"""SELECT
             L_ORDERKEY,
             SUM(L_EXTENDEDPRICE * (1 - L_DISCOUNT)) AS REVENUE,
@@ -233,7 +227,7 @@ def q04(root: str):
     orders = load_orders(root)
     
     DATE = "1993-08-01"
-    total = spark.sql(
+    total = duckdb.sql(
         f"""SELECT
                 O_ORDERPRIORITY,
                 COUNT(*) AS ORDER_COUNT
@@ -270,7 +264,7 @@ def q05(root: str):
 
     REGION = "ASIA"
     DATE = "1996-01-01"
-    total = spark.sql(
+    total = duckdb.sql(
         f"""SELECT
                 N_NAME,
                 SUM(L_EXTENDEDPRICE * (1 - L_DISCOUNT)) AS REVENUE
@@ -303,7 +297,7 @@ def q06(root: str):
     lineitem = load_lineitem(root)
 
     DATE = "1996-01-01"
-    total = spark.sql(
+    total = duckdb.sql(
         f"""SELECT
                 SUM(L_EXTENDEDPRICE * L_DISCOUNT) AS REVENUE
             FROM
@@ -326,7 +320,7 @@ def q07(root: str):
     
     NATION1 = "FRANCE"
     NATION2 = "GERMANY"
-    total = spark.sql(
+    total = duckdb.sql(
         f"""SELECT
                 SUPP_NATION,
                 CUST_NATION,
@@ -380,7 +374,7 @@ def q08(root: str):
     NATION = "BRAZIL"
     REGION = "AMERICA"
     TYPE = "ECONOMY ANODIZED STEEL"
-    total = spark.sql(
+    total = duckdb.sql(
         F"""SELECT
                 O_YEAR,
                 SUM(CASE
@@ -432,7 +426,8 @@ def q09(root: str):
     partsupp = load_partsupp(root)
 
     NAME = "ghost"
-    total = spark.sql(
+
+    total = duckdb.sql(
         f"""SELECT
                 NATION,
                 O_YEAR,
@@ -476,7 +471,7 @@ def q10(root: str):
     customer = load_customer(root)
 
     DATE = "1994-11-01"
-    total = spark.sql(
+    total = duckdb.sql(
         f"""SELECT
                 C_CUSTKEY,
                 C_NAME,
@@ -521,7 +516,7 @@ def q11(root: str):
     NATION = "GERMANY"
     FRACTION = 0.0001
 
-    total = spark.sql(
+    total = duckdb.sql(
         f"""SELECT
                 PS_PARTKEY,
                 SUM(PS_SUPPLYCOST * PS_AVAILQTY) AS VALUE
@@ -547,8 +542,8 @@ def q11(root: str):
                         AND S_NATIONKEY = N_NATIONKEY
                         AND N_NAME = '{NATION}'
                     )
-            ORDER BY
-                VALUE DESC"""
+                ORDER BY
+                    VALUE DESC"""
     )
 
     return total
@@ -561,7 +556,7 @@ def q12(root):
     SHIPMODE1 = "MAIL"
     SHIPMODE2 = "SHIP"
     DATE = "1994-01-01"
-    total = spark.sql(
+    total = duckdb.sql(
         f"""SELECT
                 L_SHIPMODE,
                 SUM(CASE
@@ -601,7 +596,7 @@ def q13(root: str):
 
     WORD1 = "special"
     WORD2 = "requests"
-    total = spark.sql(
+    total = duckdb.sql(
         F"""SELECT
                 C_COUNT, COUNT(*) AS CUSTDIST
             FROM (
@@ -629,7 +624,7 @@ def q14(root):
     part = load_part(root)
     
     DATE = "1994-03-01"
-    total = spark.sql(
+    total = duckdb.sql(
         f"""SELECT
                 100.00 * SUM(CASE
                     WHEN P_TYPE LIKE 'PROMO%'
@@ -652,7 +647,7 @@ def q15(root):
     supplier = load_supplier(root)
 
     DATE = "1996-01-01"
-    spark.sql(
+    _ = duckdb.execute(
         f"""CREATE TEMP VIEW REVENUE (SUPPLIER_NO, TOTAL_REVENUE) AS
                 SELECT
                     L_SUPPKEY,
@@ -665,7 +660,7 @@ def q15(root):
                 GROUP BY
                     L_SUPPKEY"""
     )
-    total = spark.sql(
+    total = duckdb.sql(
         """SELECT
                 S_SUPPKEY,
                 S_NAME,
@@ -686,9 +681,9 @@ def q15(root):
             ORDER BY
                 S_SUPPKEY"""
     )
-    spark.sql(
-        "DROP VIEW REVENUE"
-    )
+    # _ = duckdb.execute(
+    #     "DROP VIEW REVENUE"
+    # )
     return total
 
 
@@ -707,7 +702,7 @@ def q16(root):
     SIZE6 = 3
     SIZE7 = 36
     SIZE8 = 9
-    total = spark.sql(
+    total = duckdb.sql(
         F"""SELECT
                 P_BRAND,
                 P_TYPE,
@@ -727,7 +722,7 @@ def q16(root):
                     FROM
                         SUPPLIER
                     WHERE
-                        S_COMMENT LIKE '%Customer%Complaints%'
+                        S_COMMENT LIKE '%CUSTOMER%COMPLAINTS%'
                 )
             GROUP BY
                 P_BRAND,
@@ -748,7 +743,7 @@ def q17(root):
 
     BRAND = "Brand#23"
     CONTAINER = "MED BOX"
-    total = spark.sql(
+    total = duckdb.sql(
         f"""SELECT
                 SUM(L_EXTENDEDPRICE) / 7.0 AS AVG_YEARLY
             FROM
@@ -776,7 +771,7 @@ def q18(root):
     customer = load_customer(root)
 
     QUANTITY = 300
-    total = spark.sql(
+    total = duckdb.sql(
         f"""SELECT
                 C_NAME,
                 C_CUSTKEY,
@@ -818,13 +813,9 @@ def q19(root):
     lineitem = load_lineitem(root)
     part = load_part(root)
 
-    BRAND1 = "Brand#31"
-    BRAND2 = "Brand#43"
-    QUANTITY1 = 4
-    QUANTITY2 = 15
-    QUANTITY3 = 26
-
-    total = spark.sql(
+    BRAND = "Brand#31"
+    QUANTITY = 4
+    total = duckdb.sql(
         f"""SELECT
                 SUM(L_EXTENDEDPRICE* (1 - L_DISCOUNT)) AS REVENUE
             FROM
@@ -833,9 +824,9 @@ def q19(root):
             WHERE
                 (
                     P_PARTKEY = L_PARTKEY
-                    AND P_BRAND = '{BRAND1}'
+                    AND P_BRAND = '{BRAND}'
                     AND P_CONTAINER IN ('SM CASE', 'SM BOX', 'SM PACK', 'SM PKG')
-                    AND L_QUANTITY >= {QUANTITY1} AND L_QUANTITY <= {QUANTITY1} + 10
+                    AND L_QUANTITY >= {QUANTITY} AND L_QUANTITY <= {QUANTITY} + 10
                     AND P_SIZE BETWEEN 1 AND 5
                     AND L_SHIPMODE IN ('AIR', 'AIR REG')
                     AND L_SHIPINSTRUCT = 'DELIVER IN PERSON'
@@ -843,9 +834,9 @@ def q19(root):
                 OR
                 (
                     P_PARTKEY = L_PARTKEY
-                    AND P_BRAND = '{BRAND2}'
+                    AND P_BRAND = 'BRAND#43'
                     AND P_CONTAINER IN ('MED BAG', 'MED BOX', 'MED PKG', 'MED PACK')
-                    AND L_QUANTITY >= {QUANTITY2} AND L_QUANTITY <= {QUANTITY2} + 10
+                    AND L_QUANTITY >= 15 AND L_QUANTITY <= 25
                     AND P_SIZE BETWEEN 1 AND 10
                     AND L_SHIPMODE IN ('AIR', 'AIR REG')
                     AND L_SHIPINSTRUCT = 'DELIVER IN PERSON'
@@ -853,9 +844,9 @@ def q19(root):
                 OR
                 (
                     P_PARTKEY = L_PARTKEY
-                    AND P_BRAND = '{BRAND2}'
+                    AND P_BRAND = 'BRAND#43'
                     AND P_CONTAINER IN ('LG CASE', 'LG BOX', 'LG PACK', 'LG PKG')
-                    AND L_QUANTITY >= {QUANTITY3} AND L_QUANTITY <= {QUANTITY3} + 10
+                    AND L_QUANTITY >= 26 AND L_QUANTITY <= 36
                     AND P_SIZE BETWEEN 1 AND 15
                     AND L_SHIPMODE IN ('AIR', 'AIR REG')
                     AND L_SHIPINSTRUCT = 'DELIVER IN PERSON'
@@ -874,7 +865,7 @@ def q20(root):
 
     NAME = "azure"
     DATE = "1996-01-01"
-    total = spark.sql(
+    total = duckdb.sql(
         f"""SELECT
                 S_NAME,
                 S_ADDRESS
@@ -924,7 +915,7 @@ def q21(root):
     supplier = load_supplier(root)
 
     NATION = "SAUDI ARABIA"
-    total = spark.sql(
+    total = duckdb.sql(
         f"""SELECT
                 S_NAME,
                 COUNT(*) AS NUMWAIT
@@ -963,8 +954,7 @@ def q21(root):
                 S_NAME
             ORDER BY
                 NUMWAIT DESC,
-                S_NAME
-            LIMIT 100"""
+                S_NAME"""
     )
     return total
 
@@ -980,7 +970,7 @@ def q22(root):
     I5 = 30
     I6 = 18
     I7 = 17
-    total = spark.sql(
+    total = duckdb.sql(
         F"""SELECT
                 CNTRYCODE,
                 COUNT(*) AS NUMCUST,
@@ -1100,116 +1090,68 @@ def run_queries(
     queries,
     log_time=True,
     print_result=False,
+    include_io=True
 ):
-    print("Start data loading")
-    total_start = time.time()
+    print(f"print_result: {print_result}")
+    version = duckdb.__version__
+    data_start_time = time.time()
     for query in queries:
         loaders = query_to_loaders[query]
         for loader in loaders:
-            data = loader(path)
-    print(f"Data loading time (s): {time.time() - total_start}")
+            loader(path)
+    print(f"Total data loading time (s): {time.time() - data_start_time}")
+
     total_start = time.time()
     for query in queries:
         try:
-            t1 = time.time()
+            start_time = time.time()
             result = query_to_runner[query](path)
-            result = result.toPandas()
-            dur = time.time() - t1
+            result = result.df()
+            without_io_time = time.time() - start_time
             success = True
             if print_result:
-                result_prefix = "./results"
-                if not os.path.exists(result_prefix):
-                    os.makedirs(result_prefix)
-                result_path = f"{result_prefix}/{query}.out"
-                result.to_csv(result_path, index=False)
+                print_result_fn("duckdb", result, query)
         except Exception as e:
             print("".join(traceback.TracebackException.from_exception(e).format()))
-            dur = 0.0
+            without_io_time = 0.0
             success = False
         finally:
-            if log_time:
-                append_row("pyspark", query, dur, pyspark.__version__, success)
+            pass
+        if log_time:
+            log_time_fn("duckdb", query, version=version, without_io_time=without_io_time, success=success)
     print(f"Total query execution time (s): {time.time() - total_start}")
 
 
 def main():
-    global spark
     parser = argparse.ArgumentParser(description="TPC-H benchmark.")
-    parser.add_argument(
-        "--path", type=str, required=True, help="path to the TPC-H dataset."
-    )
-    parser.add_argument(
-        "--queries",
-        type=int,
-        nargs="+",
-        required=False,
-        help="whitespace separated TPC-H queries to run.",
-    )
-    parser.add_argument("--master", type=str, help="Spark master URI")
-
     # aws settings
     parser.add_argument("--account", type=str, help="AWS access id")
     parser.add_argument("--key", type=str, help="AWS secret access key")
     parser.add_argument("--endpoint", type=str, help="AWS region endpoint related to your S3")
-
-    parser.add_argument("--executor_cores", type=str, help='Number of cores for each Spark executor')
-    parser.add_argument("--executor_memory", type=str, help='Memory size for each Spark executor')
-    parser.add_argument(
-        "--log_time",
-        action="store_true",
-        help="log time metrics or not.",
-    )
-    parser.add_argument(
-        "--print_result",
-        action="store_true",
-        help="print result.",
-    )
-
+    parser = parse_common_arguments(parser)  
     args = parser.parse_args()
+    path: str = args.path
     print(f"Path: {args.path}")
 
     queries = list(range(1, 23))
     if args.queries is not None:
         queries = args.queries
     print(f"Queries to run: {queries}")
-
-    path: str = args.path
-
-    account = args.account
-    key = args.key
-
-    spark = SparkSession\
-        .builder\
-        .appName("PySpark tpch query")\
-        .master(args.master) \
-        .config("spark.executor.cores", args.executor_cores) \
-        .config("spark.executor.memory", args.executor_memory) \
-        .getOrCreate()
-    spark.sparkContext.setLogLevel("ERROR")
-
-    # spark = (
-    #     SparkSession.builder.appName("PySpark tpch query")
-    #     .config(
-    #         "spark.jars.packages",
-    #         "org.apache.spark:spark-hadoop-cloud_2.12:3.2.2",
-    #     )
-    #     .config("spark.executor.cores", args.executor_cores)
-    #     .config("spark.executor.memory", args.executor_memory)
-    #     .getOrCreate()
-    # )
+    print(f"Include IO: {args.include_io}")
 
     if "s3://" in path:
-        conf = spark.sparkContext._jsc.hadoopConfiguration()
-        conf.set("fs.s3a.access.key", account)
-        conf.set("fs.s3a.secret.key", key)
-        conf.set("fs.s3a.endpoint", args.endpoint)
-
-        path = path.replace("s3://", "s3a://")
+        import boto3
+        s3_client = boto3.client(
+            's3', 
+            aws_access_key_id=args.account,
+            aws_secret_access_key=args.key
+        )
     
     run_queries(path, 
                 queries, 
                 args.log_time, 
-                args.print_result)
+                args.print_result,
+                args.include_io)
 
 
 if __name__ == "__main__":
