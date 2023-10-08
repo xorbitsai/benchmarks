@@ -1,9 +1,13 @@
-import argparse
 import time
+import argparse
+import traceback
 
 import numpy as np
+import dask
 import dask.array as da
 from dask.distributed import Client
+
+from common_utils import average_without_extremes, append_row
 
 
 def matmul(size, chunk, client):
@@ -15,8 +19,7 @@ def matmul(size, chunk, client):
     B = da.random.random((size, size), chunks=chunks)
 
     C = da.matmul(A, B)
-    C.compute()
-
+    C = dask.compute(C)
     return C
 
 
@@ -99,23 +102,22 @@ def qr(size, chunk, client):
 
 
 def fft(size, chunk, client):
-    if not chunk:
-        chunk = 10
-    a = da.random.random(size=(size, size))
-    a = a.rechunk(size, int(size / chunk))
+    # if not chunk:
+    #     chunk = 10
+    # a = da.random.random(size=(size, size))
+    a = np.exp(2j * np.pi * np.arange(size) / 8)
+    # a = a.rechunk(size, int(size / chunk))
     s = da.fft.fft(a=a)
 
     s = s.compute()
     return s
 
 
-def lregression(size, chunk, client):
+def reg(size, chunk, client):
+    from dask_glm.datasets import make_regression
     from dask_ml.linear_model import LinearRegression
 
-    p = int(da.log(size) + 100)
-    X = da.random.random((size, p))
-    y = da.random.random(size)
-
+    X, y = make_regression(n_samples=size, n_features=100, n_informative=5, chunksize=chunk)
     lr = LinearRegression()
     lr.fit(X, y)
     return lr
@@ -125,73 +127,106 @@ workload_to_runner = {
     "matmul": {
         "func": matmul,
         "sizes": {
-            "s": 10_000,
-            "m": 20_000,
-            "l": 50_000,
-            "xl": 100_000,
+            "1": 5_000,
+            "2": 7_071,
+            "3": 8_660,
+            "4": 10_000,
+            "5": 11_180,
+            "6": 12_247,
+            "7": 13_228,
+            "8": 14_142,
         },
     },
     "blacksch": {
         "func": blacksch,
         "sizes": {
-            "s": 100_000,
-            "m": 1_000_000,
-            "l": 100_000_000,
-            "xl": 1_000_000_000,
+            "1": 1_000_000,
+            "2": 2_000_000,
+            "3": 3_000_000,
+            "4": 4_000_000,
+            "5": 5_000_000,
+            "6": 6_000_000,
+            "7": 7_000_000,
+            "8": 8_000_000,
         },
     },
     "qr": {
         "func": qr,
         "sizes": {
-            "s": 1_000,
-            "m": 5_000,
-            "l": 8_000,
-            "xl": 10_000,
+            "1": 5_000,
+            "2": 7_071,
+            "3": 8_660,
+            "4": 10_000,
+            "5": 11_180,
+            "6": 12_247,
+            "7": 13_228,
+            "8": 14_142,
         },
     },
     "fft": {
         "func": fft,
         "sizes": {
-            "s": 1_000,
-            "m": 10_000,
-            "l": 20_000,
-            "xl": 40_000,
+            "1": 4_000,
+            "2": 8_000,
+            "3": 12_000,
+            "4": 16_000,
+            "5": 20_000,
+            "6": 24_000,
+            "7": 28_000,
+            "8": 32_000,
         },
     },
-    "lregression": {
-        "func": lregression,
+    "reg": {
+        "func": reg,
         "sizes": {
-            "s": 100_000,
-            "m": 1_000_000,
-            "l": 10_000_000,
-            "xl": 100_000_000,
+            "1": 1_000_000,
+            "2": 2_000_000,
+            "3": 3_000_000,
+            "4": 4_000_000,
+            "5": 5_000_000,
+            "6": 6_000_000,
+            "7": 7_000_000,
+            "8": 8_000_000,
         },
     },
 }
 
 
-def run_workloads(workloads, sizes, chunk, client):
+def run_workloads(workloads, sizes, runs, chunk, client):
+    version = dask.__version__
     for workload in workloads:
         func = workload_to_runner[workload]["func"]
         sizes_dict = workload_to_runner[workload]["sizes"]
         for key, size in sizes_dict.items():
             if key in sizes:
-                start = time.time()
-                result = func(size, chunk, client)
-                end = time.time()
-                duration = end - start
-                print(f"{workload},{size},{duration}")
+                times = []
+                try:
+                    for _ in range(runs):
+                        start = time.time()
+                        result = func(size, chunk, client)
+                        end = time.time()
+                        t = end - start
+                        times.append(t)
+                    duration = average_without_extremes(times)
+                    success = True
+                except Exception as e:
+                    print("".join(traceback.TracebackException.from_exception(e).format()))
+                    duration = 0.0
+                    success = False
+                finally:
+                    pass
+                append_row("dask", workload=workload, version=version, size=size, duration=duration, success=success)
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Dask Array benchmark")
+    parser = argparse.ArgumentParser(description="Array benchmark")
     parser.add_argument("--endpoint", type=str, default=None, help="cluster endpoint")
     parser.add_argument(
         "--workloads",
         type=str,
         nargs="+",
         required=False,
-        default=["matmul", "blacksch", "qr", "fft", "lregression"],
+        default=["matmul", "blacksch", "qr", "fft", "reg"],
         help="Comma separated workloads to run.",
     )
     parser.add_argument(
@@ -199,8 +234,15 @@ def main():
         type=str,
         nargs="+",
         required=False,
-        default=["s", "m", "l", "xl"],
+        default=["1"],
         help="Comma separated size to run.",
+    )
+    parser.add_argument(
+        "--runs",
+        type=int,
+        required=False,
+        default=7,
+        help="Number of runs.",
     )
     parser.add_argument(
         "--chunk", type=int, required=False, default=None, help="Chunk for Dask"
@@ -213,7 +255,7 @@ def main():
         client = LocalCluster()
     elif args.endpoint:
         client = Client(args.endpoint)
-    run_workloads(args.workloads, args.size, args.chunk, client)
+    run_workloads(args.workloads, args.size, args.runs, args.chunk, client)
 
 
 if __name__ == "__main__":

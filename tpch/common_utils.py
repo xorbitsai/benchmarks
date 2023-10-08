@@ -20,7 +20,7 @@ def log_time_fn(
     TIMINGS_FILE = f"time-{solution}.csv"
     with open(TIMINGS_FILE, "a") as f:
         metric = {
-            "framwwork": solution,
+            "framework": solution,
             "version": version,
             "query": q,
             "without_io_time": without_io_time,
