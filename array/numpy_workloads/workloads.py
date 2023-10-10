@@ -4,7 +4,7 @@ import traceback
 
 import numpy as np
 
-from common_utils import average_without_extremes, append_row
+from common_utils import average_without_extremes, log_time_fn
 
 
 def matmul(size):
@@ -189,7 +189,7 @@ def run_workloads(workloads, sizes, runs):
                     success = False
                 finally:
                     pass
-                append_row("numpy", workload=workload, version=version, size=size, duration=duration, success=success)
+                log_time_fn("numpy", workload=workload, version=version, size=size, duration=duration, success=success)
 
 
 def main():

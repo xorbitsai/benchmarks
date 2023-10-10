@@ -1,3 +1,5 @@
+# Optiver Volatility
+
 ### Intro
 
 Benchmark with winning solution to optiver [realized volatility competition](https://www.kaggle.com/competitions/optiver-realized-volatility-prediction). The dataset contains financial data such as orders and trades. The goal is to predict volatility in the next 10 minutes. The datset was originally obscured by authors and winning solutions resored original data to increase their score. That's why solution uses tools like nearest neighbours. 

@@ -8,7 +8,7 @@ from xorbits.pandas import set_option
 
 set_option("show_progress", False)
 
-from common_utils import average_without_extremes, append_row
+from common_utils import average_without_extremes, log_time_fn
 
 
 def matmul(size):
@@ -87,7 +87,8 @@ def qr(size):
 
 
 def fft(size):
-    a = np.random.random(size=(size, size))
+    a = np.exp(2j * np.pi * np.arange(size) / 8)
+    # a = np.random.random(size=(size, size))
     s = np.fft.fft(a=a)
 
     s = xorbits.run(s)
@@ -196,7 +197,7 @@ def run_workloads(workloads, sizes, runs):
                     success = False
                 finally:
                     pass
-                append_row("xorbits", workload=workload, version=version, size=size, duration=duration, success=success)
+                log_time_fn("xorbits", workload=workload, version=version, size=size, duration=duration, success=success)
 
 
 def main():

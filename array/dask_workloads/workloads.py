@@ -7,7 +7,7 @@ import dask
 import dask.array as da
 from dask.distributed import Client
 
-from common_utils import average_without_extremes, append_row
+from common_utils import average_without_extremes, log_time_fn
 
 
 def matmul(size, chunk, client):
@@ -215,7 +215,7 @@ def run_workloads(workloads, sizes, runs, chunk, client):
                     success = False
                 finally:
                     pass
-                append_row("dask", workload=workload, version=version, size=size, duration=duration, success=success)
+                log_time_fn("dask", workload=workload, version=version, size=size, duration=duration, success=success)
 
 
 def main():

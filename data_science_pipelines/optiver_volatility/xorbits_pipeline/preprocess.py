@@ -179,11 +179,11 @@ def preprocess(paths: dict[str, Path]):
     df = pd.merge(df, trade, on=["stock_id", "time_id"], how="left")
     df = pd.merge(df, book_v2, on=["stock_id", "time_id"], how="left")
     
-    test_df = df.iloc[:170000].copy()
-    test_df["time_id"] += 32767
-    test_df["row_id"] = ""
+    # test_df = df.iloc[:170000].copy()
+    # test_df["time_id"] += 32767
+    # test_df["row_id"] = ""
 
-    df = pd.concat([df, test_df.drop("row_id", axis=1)]).reset_index(drop=True)
+    # df = pd.concat([df, test_df.drop("row_id", axis=1)]).reset_index(drop=True)
     df.to_feather(paths["preprocessed"])
     print(f"time: {time.time() - start}")
 
@@ -214,12 +214,12 @@ def main():
         test_dataset=workdir / "test_dataset.f",
         folds=workdir / "folds.pkl",
     )
-    posix_paths = {}
     workdir.mkdir(exist_ok=True, parents=True)
+    posix_paths = {}
     for key, value in paths.items():
         posix_paths[key] = value.as_posix()
 
-    preprocess(paths=paths)
+    preprocess(paths=posix_paths)
 
 if __name__ == "__main__":
     main()

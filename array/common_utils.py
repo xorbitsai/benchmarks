@@ -1,7 +1,7 @@
 import json
 from typing import List
 
-def append_row(
+def log_time_fn(
     solution: str, 
     workload: str, 
     version: str,

@@ -94,15 +94,46 @@ def make_book_feature(book_path):
     agg = book.groupby(gb_cols).agg(features).reset_index(drop=False)
     agg.columns = flatten_name("book", agg.columns)
 
-    for time in [450, 300, 150]:
-        d = (
-            book[book["seconds_in_bucket"] >= time]
-            .groupby(gb_cols)
-            .agg(features)
-            .reset_index(drop=False)
-        )
-        d.columns = flatten_name(f"book_{time}", d.columns)
-        agg = pd.merge(agg, d, on=gb_cols, how="left")
+    time = 450
+    d = (
+        book[book["seconds_in_bucket"] >= time]
+        .groupby(gb_cols)
+        .agg(features)
+        .reset_index(drop=False)
+    )
+    d.columns = flatten_name(f"book_{time}", d.columns)
+    agg = pd.merge(agg, d, on=gb_cols, how="left")
+
+    time = 300
+    d = (
+        book[book["seconds_in_bucket"] >= time]
+        .groupby(gb_cols)
+        .agg(features)
+        .reset_index(drop=False)
+    )
+    d.columns = flatten_name(f"book_{time}", d.columns)
+    agg = pd.merge(agg, d, on=gb_cols, how="left")
+
+    time = 150
+    d = (
+        book[book["seconds_in_bucket"] >= time]
+        .groupby(gb_cols)
+        .agg(features)
+        .reset_index(drop=False)
+    )
+    d.columns = flatten_name(f"book_{time}", d.columns)
+    agg = pd.merge(agg, d, on=gb_cols, how="left")
+    print(agg)
+
+    # for time in [450, 300, 150]:
+    #     d = (
+    #         book[book["seconds_in_bucket"] >= time]
+    #         .groupby(gb_cols)
+    #         .agg(features)
+    #         .reset_index(drop=False)
+    #     )
+    #     d.columns = flatten_name(f"book_{time}", d.columns)
+    #     agg = pd.merge(agg, d, on=gb_cols, how="left")
     return agg
 
 
